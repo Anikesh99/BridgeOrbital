@@ -7,6 +7,7 @@ const express = require('express')
 const path = require('path')
 const app = express()
 const http = require('http').createServer(app)
+const client = require('socket.io')
 const io = require('socket.io')(http)
 const PORT = process.env.PORT || 5000
 const index = require('./routes/index')
@@ -17,6 +18,7 @@ app.use(index)
 const { cardsInitialState, startNewGame } = require('./client/src/util')
 const { default: Swal } = require('sweetalert2')
 const { secretOrKey } = require('./config/keys')
+const { parse } = require('path')
 // in the tut they use this to modify states and keep track
 let clientIds = []
 let rooms = []
@@ -24,10 +26,58 @@ let rooms = []
 //for game logic
 //=================================================================================
 let deck = [
-    'AS', '2S', '3S', '4S', '5S', '6S', '7S', '8S', '9S', 'TS', 'JS', 'QS', 'KS',
-    'AH', '2H', '3H', '4H', '5H', '6H', '7H', '8H', '9H', 'TH', 'JH', 'QH', 'KH',
-    'AC', '2C', '3C', '4C', '5C', '6C', '7C', '8C', '9C', 'TC', 'JC', 'QC', 'KC',
-    'AD', '2D', '3D', '4D', '5D', '6D', '7D', '8D', '9D', 'TD', 'JD', 'QD', 'KD',
+    'AS',
+    '2S',
+    '3S',
+    '4S',
+    '5S',
+    '6S',
+    '7S',
+    '8S',
+    '9S',
+    'TS',
+    'JS',
+    'QS',
+    'KS',
+    'AH',
+    '2H',
+    '3H',
+    '4H',
+    '5H',
+    '6H',
+    '7H',
+    '8H',
+    '9H',
+    'TH',
+    'JH',
+    'QH',
+    'KH',
+    'AC',
+    '2C',
+    '3C',
+    '4C',
+    '5C',
+    '6C',
+    '7C',
+    '8C',
+    '9C',
+    'TC',
+    'JC',
+    'QC',
+    'KC',
+    'AD',
+    '2D',
+    '3D',
+    '4D',
+    '5D',
+    '6D',
+    '7D',
+    '8D',
+    '9D',
+    'TD',
+    'JD',
+    'QD',
+    'KD',
 ]
 
 function shuffle(array) {
@@ -91,7 +141,6 @@ let currPlayer = 0
 var callLog = []
 
 io.on('connection', (socket) => {
-    clientIds.push(socket.id)
     // add to the list of sockets in game right now
     console.log(socket.id, ' connected')
 
@@ -102,6 +151,7 @@ io.on('connection', (socket) => {
         // adds a roomID to the array of roomIDs
         console.log(`Created a new room ${socket.id}`)
         printArray()
+        clientIds.push(socket.id)
     })
 
     socket.on('joinRoom', (roomId) => {
@@ -109,16 +159,21 @@ io.on('connection', (socket) => {
             socket.join(roomId.value, () => {
                 console.log(`Socket ${socket.id} joined room ${roomId.value}`)
             })
+            clientIds.push(socket.id)
             socket.emit('RoomFound')
             console.log(io.sockets.adapter.rooms[roomId.value])
         } else {
             let errmsg = ''
             if (!inside(roomId.value)) {
                 errmsg = 'Room does not exist'
-                console.log(`Server emits: Oops room ${roomId.value} does not exist`)
+                console.log(
+                    `Server emits: Oops room ${roomId.value} does not exist`
+                )
             } else {
                 errmsg = 'Room is full'
-                console.log(`Server emits: Oops room ${roomId.value} is filled to the brim`)
+                console.log(
+                    `Server emits: Oops room ${roomId.value} is filled to the brim`
+                )
             }
             socket.emit('NoRoom', errmsg)
         }
@@ -151,7 +206,10 @@ io.on('connection', (socket) => {
 
     socket.on('displayCard', (str) => {
         console.log(
-            `displayCard() on server called, card is ${str.slice(0, 1)} of ${str.slice(1)}`
+            `displayCard() on server called, card is ${str.slice(
+                0,
+                1
+            )} of ${str.slice(1)}`
         )
     })
 
@@ -162,7 +220,7 @@ io.on('connection', (socket) => {
 
     socket.on('clickedCard', (card) => {
         socket.emit('cardResponse', card)
-        //console.log(card)
+        console.log(card)
     })
 
     socket.on('leaveRoom', (roomId) => {
@@ -185,7 +243,7 @@ io.on('connection', (socket) => {
     socket.on('print', (result) => {
         console.log(`${result}`)
     })
-    //calling testing 
+    //calling testing
     //=======================================================================
     // socket.on('callQuery', rmid => {
     //     if (io.sockets.adapter.rooms[rmid].length == 4) {
@@ -197,7 +255,6 @@ io.on('connection', (socket) => {
     //     }
     // })
 
-
     // socket.on('playerCall', (playerid, result) =>
     //     // callLog.push(playerid + result)
     //     console.log(playerid + " called " + result)
@@ -207,31 +264,65 @@ io.on('connection', (socket) => {
     socket.on('callStart', (rmid) => {
         if (io.sockets.adapter.rooms[rmid].length === 4) {
             io.of('/').adapter.clients([rmid], (err, clients) => {
-                io.to(clients[currPlayer % 4]).emit('startCallSuccess')
-                //currPlayer=0
+                // currPlayer = clients.indexOf(socket.id) + 1
+                currPlayer = 0
                 currPlayer++
+                io.to(clients[currPlayer - 1]).emit('startCallSuccess')
             })
+            // io.to(socket.id).emit('startCallSuccess')
+            // currPlayer++
         } else {
             io.emit('startCallFail')
         }
     })
 
-    socket.on('callResult', (results) => {
-        //const callLog = []
-        callLog.push(results)
+    function insideCallLog(rmid) {
+        for (let i = callLog.length - 1; i >= 0; i--) {
+            if (callLog[i].slice(0, 20).valueOf() == rmid.valueOf()) {
+                console.log(callLog[i].slice(21))
+                return callLog[i].slice(21)
+            }
+        }
+        return ''
+    }
+    socket.on('callResult', (rmid, call) => {
+        // callLog.push(results.slice(0, 21) + results.slice(42))
+        let moveOn = true
+        const insideString = insideCallLog(rmid)
+        if (call === 0) {
+        } else if (insideString !== '') {
+            const lastCall = parseInt(insideString, 10)
+            console.log('Call: ', call, ' LastCall: ', lastCall)
+            if (call > lastCall) {
+                callLog.push(rmid + ' ' + call)
+            } else {
+                moveOn = false
+            }
+        } else {
+            callLog.push(rmid + ' ' + call)
+        }
+
         console.log(callLog.toString())
-        const rmid = results.slice(21, 41)
+        // const rmid = results.slice(21, 41)
         console.log(`roomID: ${rmid}`)
         io.of('/').adapter.clients([rmid], (err, clients) => {
-            const msg = "start calling!!"
-            console.log((currPlayer % 4) + " next is: " + clients[(currPlayer % 4)])
-            io.to(clients[(currPlayer % 4)]).emit('startCallSuccess')
-            //currPlayer=0
-            currPlayer++
+            if (moveOn) {
+                console.log(
+                    (currPlayer % 4) + ' next is: ' + clients[currPlayer % 4]
+                )
+                currPlayer++
+                io.to(clients[(currPlayer - 1) % 4]).emit('startCallSuccess')
+            } else {
+                io.to(clients[currPlayer] % 4).emit('startCallSuccess')
+            }
         })
+
+        // console.log(clientIds)
+        // console.log(clientIds[currPlayer % 4])
+        // io.to(clientIds[currPlayer % 4]).emit('startCallSuccess')
+        // currPlayer++
     })
 })
-
 
 http.listen(PORT, () => console.log(`I am connected yayy`))
 

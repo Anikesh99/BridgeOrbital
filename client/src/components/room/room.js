@@ -6,91 +6,6 @@ import socket from 'socket.io-client/lib/socket'
 
 const ENDPOINT = 'http://127.0.0.1:5000'
 
-const swalWithBootstrapButtons = Swal.mixin({
-    customClass: {
-        confirmButton: 'btn btn-success',
-        cancelButton: 'btn btn-danger',
-    },
-    buttonsStyling: false,
-})
-
-const RoomConfigurator = (socket) => {
-    return swalWithBootstrapButtons
-        .fire({
-            title: 'Game Lobby',
-            text: 'Create a room or join an existing game',
-            showCancelButton: true,
-            confirmButtonText: 'Join Existing Game',
-            cancelButtonText: 'Create Room',
-            reverseButtons: true,
-        })
-        .then((result) => {
-            //confirm (Join existing game)
-            if (result.value) {
-                swalWithBootstrapButtons
-                    .fire({
-                        title: 'Please enter the room code to join:',
-                        input: 'text',
-                        confirmButtonText: 'Join',
-                        showCancelButton: true,
-                        showLoaderOnConfirm: true,
-                    })
-                    .then((result) => {
-                        //queries to join room
-                        socket.emit('joinRoom', result)
-
-                        //fails to find or join a room
-                        socket.on('NoRoom', (errmsg) => {
-                            swalWithBootstrapButtons
-                                .fire({
-                                    title: `${errmsg}\n Redirecting back to lobby`,
-                                    timer: 2000,
-                                })
-                                .then((window.location = './room'))
-                        })
-
-                        //succeeds in finding and joining the room
-                        socket.on('RoomFound', (rmid) => {
-                            //window.location = './room'
-                            //(cannot do this, as the componentdidmount will trigger and break socket connection)
-
-                            // this.setState((state) => {
-                            //     roomId: result.value
-                            // })
-                            socket.emit('queryNumbers', rmid)
-                            socket.on('getNumbers', (inRoom) => {
-                                Swal.fire({
-                                    title: `You have joined room ${rmid}, with ${inRoom} people`,
-                                    timer: 2000,
-                                })
-                            })
-                        })
-                    })
-            } else if (
-                //cancel (create new game/room)
-                result.dismiss === Swal.DismissReason.cancel
-            ) {
-                swalWithBootstrapButtons
-                    .fire({
-                        title: 'You are making your own room',
-                        text: 'Room code: ' + socket.id,
-                        confirmButtonText: 'Join room',
-                    })
-                    .then(() => {
-                        socket.emit('new_room')
-                        socket.emit('join', this.state.socket.id)
-                        //window.location = './room'
-
-                        //not sure if this is entirely correct
-                        this.setState({
-                            roomId: this.state.socket.id,
-                            displayStart: false,
-                        })
-                    })
-            }
-        })
-}
-
 class Room extends Component {
     constructor(props) {
         super(props)
@@ -106,8 +21,9 @@ class Room extends Component {
             socket: socketIOClient(ENDPOINT),
             roomId: '',
             displayStart: true,
-            hand: [],  //represents hand of client
+            hand: [], //represents hand of client
             currCall: '',
+            stillCalling: true,
         }
     }
 
@@ -132,7 +48,9 @@ class Room extends Component {
             this.setState({
                 hand: hand,
             })
-            console.log(`${this.state.socket.id} rec\'d hando of ${this.state.hand}`)
+            console.log(
+                `${this.state.socket.id} rec\'d hando of ${this.state.hand}`
+            )
         })
         this.state.socket.on('playersNeeded', () => {
             Swal.fire({
@@ -145,21 +63,53 @@ class Room extends Component {
     callProcess = () => {
         //console.log('starting call process')
         this.state.socket.emit('callStart', this.state.roomId)
-
         this.state.socket.on('startCallSuccess', () => {
             Swal.fire({
-                title: "start calling!",
-                input: 'text',
+                title: 'Start calling!',
+                input: 'select',
+                inputOptions: {
+                    '0': 'Pass',
+                    '1': '1 Diamond',
+                    '2': '1 Clubs',
+                    '3': '1 Heart',
+                    '4': '1 Spade',
+                    '5': '2 Diamond',
+                    '6': '2 Clubs',
+                    '7': '2 Heart',
+                    '8': '2 Spade',
+                    '9': '3 Diamond',
+                    '10': '3 Clubs',
+                    '11': '3 Heart',
+                    '12': '3 Spade',
+                    '13': '4 Diamond',
+                    '14': '4 Clubs',
+                    '15': '4 Heart',
+                    '16': '4 Spade',
+                    '17': '5 Diamond',
+                    '18': '5 Clubs',
+                    '19': '5 Heart',
+                    '20': '5 Spade',
+                },
             }).then((result) => {
-                this.state.socket.emit('callResult', (this.state.socket.id + " " + this.state.roomId + " " + result.value))
-                this.state.currCall = this.state.socket.id + " " + result.value
+                if (result.value.valueOf() == '0') {
+                    this.state.socket.emit('callResult', 0, 0)
+                } else {
+                    const call = parseInt(result.value, 10)
+                    console.log(call)
+                    this.state.socket.emit(
+                        'callResult',
+                        this.state.roomId,
+                        call
+                    )
+                }
+                // this.state.currCall = this.state.socket.id + ' ' + result.value
             })
         })
 
         this.state.socket.on('startCallFail', () => {
             Swal.fire({
                 title: 'Cannot start calling, not enough people',
-                timer: 2000
+                timer: 2000,
             })
         })
     }
@@ -252,10 +202,7 @@ class Room extends Component {
                     <button style={buttonStyle} onClick={this.dealQuery}>
                         Deal hands
                     </button>
-                    <button
-                        style={buttonStyle}
-                        onClick={this.callProcess}
-                    >
+                    <button style={buttonStyle} onClick={this.callProcess}>
                         Begin calling
                     </button>
                 </React.Fragment>
@@ -336,9 +283,8 @@ class StartButton extends Component {
     }
 }
 
-
 const Welcome = (props) => {
-    const Message = "Welcome to room " + this.props.roomId
+    const Message = 'Welcome to room ' + this.props.roomId
     return (
         <h3>
             <Message />
@@ -347,27 +293,30 @@ const Welcome = (props) => {
 }
 
 const Board = (props) => {
-
-    props.socket.on('cardResponse', (card) => {
-
+    let copyHand = props.hand
+    const clickedCard = (card) => {
         Swal.fire({
-            title: `Card ${JSON.stringify(card)} selected`
+            title: `You are playing ${JSON.stringify(card)}`,
         })
-    })
+        let filtered = props.hand.filter((x) => x.valueOf() !== card.valueOf())
+        copyHand = filtered
+        props.socket.emit('clickedCard', card)
+    }
 
     function showCards(hand, result) {
-        hand.forEach(card => result.push(
-            <Card
-                face={card.slice(0, 1)}
-                suit={card.slice(1)}
-                onClick={(e, card) =>
-                    props.socket.emit('clickedCard', (card))
-                } />
-        ))
+        hand.forEach((card) =>
+            result.push(
+                <Card
+                    face={card.slice(0, 1)}
+                    suit={card.slice(1)}
+                    onClick={(e, card) => clickedCard(card)}
+                />
+            )
+        )
     }
 
     let result = []
-    showCards(props.hand, result)
+    showCards(copyHand, result)
     let PepeHands = () => result
 
     return (
