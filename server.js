@@ -9,9 +9,7 @@ const app = express()
 const http = require('http').createServer(app)
 const io = require('socket.io')(http)
 const PORT = process.env.PORT || 5000
-const index = require('./routes/index')
-
-app.use(index)
+// const index = require('./client')
 
 //For the rooms
 const { cardsInitialState, startNewGame } = require('./client/src/util')
@@ -340,7 +338,6 @@ app.use(
     })
 )
 app.use(bodyParser.json())
-// DB Config
 const db = require('./config/keys').mongoURI
 
 mongoose
@@ -351,13 +348,11 @@ mongoose
     .then(() => console.log('MongoDB successfully connected'))
     .catch((err) => console.log(err))
 
-// Passport middleware
 app.use(passport.initialize())
-// Passport config
+
 require('./config/passport')(passport)
 app.use('/api/users', users)
 
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static('client/build'))
-}
+app.use(express.static('client/build'))
+
 app.listen(PORT, () => console.log(`Server up and running on port ${PORT} !`))

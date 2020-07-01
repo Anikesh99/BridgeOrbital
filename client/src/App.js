@@ -14,6 +14,18 @@ import PrivateRoute from './components/private-route/PrivateRoute'
 import Dashboard from './components/dashboard/Dashboard'
 import Room from './components/room/room'
 
+import ReactDOM from 'react-dom'
+import './index.css'
+import App from './App'
+// import * as serviceWorker from './serviceWorker';
+
+ReactDOM.render(
+    <React.StrictMode>
+        <App />
+    </React.StrictMode>,
+    document.getElementById('root')
+)
+
 if (localStorage.jwtToken) {
     const token = localStorage.jwtToken
     setAuthToken(token)
