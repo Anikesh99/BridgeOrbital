@@ -7,7 +7,6 @@ const express = require('express')
 const path = require('path')
 const app = express()
 const http = require('http').createServer(app)
-const client = require('socket.io')
 const io = require('socket.io')(http)
 const PORT = process.env.PORT || 5000
 const index = require('./routes/index')
@@ -18,7 +17,7 @@ app.use(index)
 const { cardsInitialState, startNewGame } = require('./client/src/util')
 const { default: Swal } = require('sweetalert2')
 const { secretOrKey } = require('./config/keys')
-const { parse } = require('path')
+const socket = require('socket.io-client/lib/socket')
 // in the tut they use this to modify states and keep track
 let clientIds = []
 let rooms = []
@@ -98,13 +97,7 @@ function shuffle(array) {
     }
     return array
 }
-
-shuffle(deck)
-const hand0 = deck.slice(0, 13)
-const hand1 = deck.slice(13, 26)
-const hand2 = deck.slice(26, 39)
-const hand3 = deck.slice(39, 52)
-//=================================================================================
+//================================================================================
 
 function newGame(roomId) {
     console.log(`newGame() called, game has started in ${roomId}`)
@@ -136,11 +129,8 @@ function canJoin(rmid) {
     return room.length < 4
 }
 
-//for calling
-let currPlayer = 0
-var callLog = []
-
 io.on('connection', (socket) => {
+    clientIds.push(socket.id)
     // add to the list of sockets in game right now
     console.log(socket.id, ' connected')
 
@@ -151,7 +141,6 @@ io.on('connection', (socket) => {
         // adds a roomID to the array of roomIDs
         console.log(`Created a new room ${socket.id}`)
         printArray()
-        clientIds.push(socket.id)
     })
 
     socket.on('joinRoom', (roomId) => {
@@ -159,9 +148,8 @@ io.on('connection', (socket) => {
             socket.join(roomId.value, () => {
                 console.log(`Socket ${socket.id} joined room ${roomId.value}`)
             })
-            clientIds.push(socket.id)
             socket.emit('RoomFound')
-            console.log(io.sockets.adapter.rooms[roomId.value])
+            //console.log(io.sockets.adapter.rooms[roomId.value])
         } else {
             let errmsg = ''
             if (!inside(roomId.value)) {
@@ -183,6 +171,12 @@ io.on('connection', (socket) => {
     socket.on('dealQuery', (rmid) => {
         if (io.sockets.adapter.rooms[rmid].length == 4) {
             io.of('/').adapter.clients([rmid], (err, clients) => {
+                shuffle(deck)
+                const hand0 = deck.slice(0, 13)
+                const hand1 = deck.slice(13, 26)
+                const hand2 = deck.slice(26, 39)
+                const hand3 = deck.slice(39, 52)
+
                 io.to(clients[0]).emit('dealHand', hand0)
                 io.to(clients[1]).emit('dealHand', hand1)
                 io.to(clients[2]).emit('dealHand', hand2)
@@ -195,13 +189,23 @@ io.on('connection', (socket) => {
             })
         } else {
             io.sockets.in(rmid).emit('playersNeeded')
-            console.log('Not enough players yet')
+            //console.log('Not enough players yet')
         }
     })
     //======================================================
 
-    socket.on('startGame', (roomId) => {
-        newGame(roomId) // we need some game logic here
+    //transmits ready status for one person to all
+    socket.on('readyToStart', (result) => {
+        const user = result.slice(0, 20)
+        const rmid = result.slice(21, 41)
+        const isReadySize = result.slice(42)
+        // console.log('user:' + user)
+        // console.log('rmid:' + rmid)
+        //console.log('isReadySize:' + isReadySize)
+        if (parseInt(isReadySize) === 3) {
+            io.to(user).emit('updateNeedToWin')
+        }
+        io.in(rmid).emit('isReady', user)
     })
 
     socket.on('displayCard', (str) => {
@@ -214,18 +218,24 @@ io.on('connection', (socket) => {
     })
 
     socket.on('queryNumbers', (rmid) => {
-        console.log(io.sockets.adapter.rooms[rmid].length)
+        //console.log(io.sockets.adapter.rooms[rmid].length)
         socket.emit('getNumbers', io.sockets.adapter.rooms[rmid].length)
     })
 
-    socket.on('clickedCard', (card) => {
-        socket.emit('cardResponse', card)
-        console.log(card)
+    socket.on('clickedCard', (userFS) => {
+        //console.log(result + " clicked")
+        const rmid = result.slice(0, 20)
+        //const fs = result.slice(20,)
+        // console.log(rmid)
+        // console.log(card)
+        // io.of('/').adapter.clients([rmid], (err, clients) => {
+        io.in(rmid).emit('cardSelected', userFS)
+        //console.log(fs)
     })
 
     socket.on('leaveRoom', (roomId) => {
         socket.leave(roomId)
-        if (io.sockets.adapter.rooms[rmid].length == 0) {
+        if (io.sockets.adapter.rooms[rmid].length === 0) {
             rooms.filter((room) => room != rmid)
         }
     })
@@ -235,94 +245,92 @@ io.on('connection', (socket) => {
         // socket.leave(socket.roomId)
     })
 
-    socket.on('getRoomId', () => {
-        socket.emit('roomId', socket.roomId)
+    socket.on('partnerQuery', (result) => {
+        const rmid = result.slice(0, 20)
+        const card = result.slice(21)
+        console.log('rmid:' + rmid + ' partner card:' + card)
+        io.in(rmid).emit('assignPartner', card)
+
+        //cannot emit to all clients except the bid winner
+
+        // io.of('/').adapter.clients([rmid], (err, clients) => {
+        //     io.to(clients[0]).emit('assignPartner', card)
+        //     io.to(clients[1]).emit('assignPartner', card)
+        //     io.to(clients[2]).emit('assignPartner', card)
+        //     io.to(clients[3]).emit('assignPartner', card)
+        // })
     })
 
-    //for debugging
-    socket.on('print', (result) => {
-        console.log(`${result}`)
-    })
-    //calling testing
-    //=======================================================================
-    // socket.on('callQuery', rmid => {
-    //     if (io.sockets.adapter.rooms[rmid].length == 4) {
-    //         io.of('/').adapter.clients([rmid], (err, clients) => {
-    //             const msg = "You are calling"
-    //             io.to(clients[currPlayer % 4]).emit('callResponse', msg)
-    //             currPlayer++
-    //         })
-    //     }
-    // })
+    socket.on('callStart', (result) => {
+        console.log(result)
+        const rmid = result.slice(0, 20)
+        const user = result.slice(21)
 
-    // socket.on('playerCall', (playerid, result) =>
-    //     // callLog.push(playerid + result)
-    //     console.log(playerid + " called " + result)
-    // )
-    //=======================================================================
+        console.log('roomid: ' + rmid + ' socketid: ' + user)
 
-    socket.on('callStart', (rmid) => {
+        //if everyone is in the room
         if (io.sockets.adapter.rooms[rmid].length === 4) {
-            io.of('/').adapter.clients([rmid], (err, clients) => {
-                // currPlayer = clients.indexOf(socket.id) + 1
-                currPlayer = 0
-                currPlayer++
-                io.to(clients[currPlayer - 1]).emit('startCallSuccess')
-            })
-            // io.to(socket.id).emit('startCallSuccess')
-            // currPlayer++
+            io.to(user).emit('startCallSuccess')
         } else {
             io.emit('startCallFail')
         }
     })
 
-    function insideCallLog(rmid) {
-        for (let i = callLog.length - 1; i >= 0; i--) {
-            if (callLog[i].slice(0, 20).valueOf() == rmid.valueOf()) {
-                console.log(callLog[i].slice(21))
-                return callLog[i].slice(21)
-            }
-        }
-        return ''
-    }
-    socket.on('callResult', (rmid, call) => {
-        // callLog.push(results.slice(0, 21) + results.slice(42))
-        let moveOn = true
-        const insideString = insideCallLog(rmid)
-        if (call === 0) {
-        } else if (insideString !== '') {
-            const lastCall = parseInt(insideString, 10)
-            console.log('Call: ', call, ' LastCall: ', lastCall)
-            if (call > lastCall) {
-                callLog.push(rmid + ' ' + call)
-            } else {
-                moveOn = false
-            }
-        } else {
-            callLog.push(rmid + ' ' + call)
-        }
+    socket.on('callResult', (result) => {
+        const userid = result.slice(0, 21)
+        const rmid = result.slice(21, 41)
+        const called = result.slice(42)
 
-        console.log(callLog.toString())
-        // const rmid = results.slice(21, 41)
-        console.log(`roomID: ${rmid}`)
-        io.of('/').adapter.clients([rmid], (err, clients) => {
-            if (moveOn) {
-                console.log(
-                    (currPlayer % 4) + ' next is: ' + clients[currPlayer % 4]
-                )
-                currPlayer++
-                io.to(clients[(currPlayer - 1) % 4]).emit('startCallSuccess')
-            } else {
-                io.to(clients[currPlayer] % 4).emit('startCallSuccess')
-            }
-        })
+        //console.log(result + " :" + rmid + ": " + called)
 
-        // console.log(clientIds)
-        // console.log(clientIds[currPlayer % 4])
-        // io.to(clientIds[currPlayer % 4]).emit('startCallSuccess')
-        // currPlayer++
+        // io.of('/').adapter.clients([rmid], (err, clients) => {
+        //     clients.forEach(client => {
+        //         socket.to(client).emit('updateHighest', called)
+        //     })
+        // })
+        io.in(rmid).emit('updateHighest', userid + ' ' + called)
+    })
+
+    socket.on('startGame', (result) => {
+        const rmid = result.slice(0, 21)
+        const lastuser = result.slice(21)
+
+        io.to(lastuser).emit('selectPartner')
+    })
+
+    socket.on('checkNumber', (rmid) => {
+        if (io.sockets.adapter.rooms[rmid].length === 4) {
+            dealHand(rmid)
+        }
     })
 })
+
+function dealHand(rmid) {
+    io.of('/').adapter.clients([rmid], (err, clients) => {
+        shuffle(deck)
+        const hand0 = deck.slice(0, 13)
+        const hand1 = deck.slice(13, 26)
+        const hand2 = deck.slice(26, 39)
+        const hand3 = deck.slice(39, 52)
+
+        io.to(clients[0]).emit('dealHand', hand0)
+        io.to(clients[1]).emit('dealHand', hand1)
+        io.to(clients[2]).emit('dealHand', hand2)
+        io.to(clients[3]).emit('dealHand', hand3)
+
+        console.log(clients[0] + ' => ' + hand0)
+        console.log(clients[1] + ' => ' + hand1)
+        console.log(clients[2] + ' => ' + hand2)
+        console.log(clients[3] + ' => ' + hand3)
+    })
+
+    socket.on('winsSet', (result) => {
+        const user1 = result.slice(0, 20)
+        const user2 = result.slice(20)
+        io.to(user1).emit('updateNTW')
+        io.to(user2).emit('updateNTW')
+    })
+}
 
 http.listen(PORT, () => console.log(`I am connected yayy`))
 
