@@ -344,7 +344,10 @@ app.use(bodyParser.json())
 const db = require('./config/keys').mongoURI
 
 mongoose
-    .connect(db, { useNewUrlParser: true, useUnifiedTopology: true })
+    .connect(process.env.MONGODB_URI || db, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+    })
     .then(() => console.log('MongoDB successfully connected'))
     .catch((err) => console.log(err))
 
@@ -353,4 +356,8 @@ app.use(passport.initialize())
 // Passport config
 require('./config/passport')(passport)
 app.use('/api/users', users)
+
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static('client/build'))
+}
 app.listen(PORT, () => console.log(`Server up and running on port ${PORT} !`))
