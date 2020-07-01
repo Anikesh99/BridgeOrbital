@@ -4,12 +4,11 @@ const passport = require('passport')
 const users = require('./routes/api/users')
 // For sockets
 const express = require('express')
-const path = require('path')
+// const path = require('path')
 const app = express()
 const http = require('http').createServer(app)
 const io = require('socket.io')(http)
 const PORT = process.env.PORT || 5000
-// const index = require('./client')
 
 //For the rooms
 const { cardsInitialState, startNewGame } = require('./client/src/util')
