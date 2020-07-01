@@ -329,7 +329,7 @@ function dealHand(rmid) {
     })
 }
 
-http.listen(PORT, () => console.log(`I am connected yayy`))
+// http.listen(PORT, () => console.log(`I am connected yayy`))
 
 app.use(
     bodyParser.urlencoded({
