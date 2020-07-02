@@ -208,10 +208,7 @@ io.on('connection', (socket) => {
 
     socket.on('displayCard', (str) => {
         console.log(
-            `displayCard() on server called, card is ${str.slice(
-                0,
-                1
-            )} of ${str.slice(1)}`
+            `displayCard() on server called, card is ${str.slice(0, 1)} of ${str.slice(1)}`
         )
     })
 
@@ -294,11 +291,15 @@ io.on('connection', (socket) => {
         }
     })
 
-    socket.on('winsSet', result => {
-        const user1 = result.slice(0, 20)
-        const user2 = result.slice(20,)
-        io.to(user1).emit('decrementNTW')
-        io.to(user2).emit('decrementNTW')
+    socket.on('winsSet', setWinner => {
+        console.log(`setWinner is ${setWinner}`)
+        io.to(setWinner).emit('decrementNTW')
+    })
+
+    socket.on('winnerFound', (rmiduser) => {
+        const rmid = rmiduser.slice(0, 20)
+        const user = rmiduser.slice(20,)
+        io.in(rmid).emit('winPrompt', user)
     })
 })
 
@@ -322,7 +323,7 @@ function dealHand(rmid) {
     })
 }
 
-// http.listen(PORT, () => console.log(`I am connected yayy`))
+http.listen(PORT, () => console.log(`I am connected yayy`))
 
 app.use(
     bodyParser.urlencoded({
