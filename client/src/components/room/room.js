@@ -56,11 +56,15 @@ class Room extends Component {
             currHighest: '0',
             //id of socket that called the curr highest bid
             calledBy: '',
-            //sockets that are ready (clicked startGame)
+            //sockets that are ready (previously needed to click startGame)
+            //current: just need to pass on the calling
             isReady: new Set(),
             needToWin: '7',
+            partner: '',
         }
     }
+
+    //start componentdidmount=============================================================================================
 
     componentDidMount() {
         //this.RoomConfigurator()
@@ -88,16 +92,20 @@ class Room extends Component {
                 selected: this.state.selected.add(userFS),
             })
 
-            //delays 3000 ms then checks if there are 4 cards in collected, if so, evaluate and assign winner
-            sleep(3000).then(() => {
+            //delays 4657 ms 
+            sleep(4567).then(() => {
+                //if there are 4 cards in selected, evaluate and assign winner of set
                 if (this.state.selected.size === 4) {
+
                     //insert logic for set winner here
                     const winningSuit = this.state.currHighest % 5
 
                     // const user1
                     // const user2
+
                     // //find some way to get the ids of the winner and the partner
                     // this.state.socket.emit('winsSet', user1 + user2)
+
 
                     //clears the set selected and adds the elements to the set collected
                     let newCollected = this.state.collected
@@ -113,22 +121,72 @@ class Room extends Component {
             })
         })
 
-        this.state.socket.on('updateNTW', () => {
+        this.state.socket.on('decrementNTW', () => {
             this.setState({
                 needToWin: this.state.needToWin - 1,
             })
         })
+
+        //used to be in callProcess=============================================
+        this.state.socket.on('isReady', (user) => {
+            const newReady = this.state.isReady.add(user)
+            this.setState({ isReady: newReady })
+            if (this.state.isReady.size === 4) {
+                this.startGame(this.state.roomId, user)
+            }
+        })
+
+        this.state.socket.on('updateHighest', (result) => {
+            const calledBy = result.slice(0, 20)
+            const newHighest = result.slice(21,)
+
+            this.setState({
+                calledBy: calledBy,
+                currHighest: newHighest,
+            })
+            console.log(`updateHighest rec'd: ${newHighest}`)
+        })
+
+        this.state.socket.on('startCallFail', () => {
+            Swal.fire({
+                title: 'Cannot start calling, not enough people',
+                timer: 2000
+            })
+        })
+
+        this.state.socket.on('updateNeedToWin', () => {
+            const newNTW = Math.floor(this.state.currHighest / 5) + parseInt(this.state.needToWin)
+            this.setState({ needToWin: newNTW })
+        })
+
+        this.state.socket.on('selectPartner', () => {
+            this.selectPartner()
+        })
+        //used to be in callProcess=============================================
+
+        //used to be in selectPartner===========================================
+        this.state.socket.on('assignPartner', (FS) => {
+            console.log('assigning in progress')
+            if (this.state.hand.includes(FS)) {
+                const newNTW = Math.floor(this.state.currHighest / 5) + parseInt(this.state.needToWin)
+                this.setState({ needToWin: newNTW })
+            }
+        })
+        //used to be in selectPartner===========================================
+
     }
+
+    //end componentdidmount===============================================================================================
 
     clickCard = (e, card) => {
         const cardString = JSON.stringify(card)
         console.log(cardString)
         const faes = cardString.slice(9, 10)
         const soot = cardString.slice(20, 21)
-        this.state.socket.emit('clickedCard', this.state.roomId + faes + soot)
-        const selectedRemoved = this.state.hand.filter(
-            (thing) => thing !== faes + soot
-        )
+        this.state.socket.emit('clickedCard', (this.state.roomId + this.state.socket.id + faes + soot))
+
+        //removes the clicked card from hand upon clicking
+        const selectedRemoved = this.state.hand.filter(thing => thing !== (faes + soot))
         this.setState({
             hand: selectedRemoved,
         })
@@ -162,7 +220,7 @@ class Room extends Component {
                     title: `You cannot select yourself`,
                     timer: 2000,
                 })
-                console.log('cannot select yourself as partner')
+                //console.log('cannot select yourself as partner')
                 this.selectPartner()
             } else if (result.value === '') {
                 console.log('no partner selected')
@@ -180,15 +238,6 @@ class Room extends Component {
             }
         })
 
-        this.state.socket.on('assignPartner', (card) => {
-            console.log('assigning in progress')
-            if (this.state.hand.includes(card)) {
-                const newNTW =
-                    Math.floor(this.state.currHighest / 5) +
-                    parseInt(this.state.needToWin)
-                this.setState({ needToWin: newNTW })
-            }
-        })
     }
 
     callProcess = () => {
@@ -231,19 +280,19 @@ class Room extends Component {
             }).then((result) => {
                 console.log(
                     'result ' +
-                        JSON.stringify(result) +
-                        ' currHighest: ' +
-                        this.state.currHighest
+                    JSON.stringify(result) +
+                    ' currHighest: ' +
+                    this.state.currHighest
                 )
                 if (result.isConfirmed) {
                     if (parseInt(result.value, 10) === 0) {
                         this.state.socket.emit(
                             'readyToStart',
                             this.state.socket.id +
-                                ' ' +
-                                this.state.roomId +
-                                ' ' +
-                                this.state.isReady.size
+                            ' ' +
+                            this.state.roomId +
+                            ' ' +
+                            this.state.isReady.size
                         )
                     } else {
                         if (
@@ -258,10 +307,10 @@ class Room extends Component {
                             this.state.socket.emit(
                                 'callResult',
                                 this.state.socket.id +
-                                    ' ' +
-                                    this.state.roomId +
-                                    ' ' +
-                                    result.value.valueOf()
+                                ' ' +
+                                this.state.roomId +
+                                ' ' +
+                                result.value.valueOf()
                             )
                         }
                     }
@@ -271,42 +320,7 @@ class Room extends Component {
             })
         })
 
-        this.state.socket.on('isReady', (user) => {
-            const newReady = this.state.isReady.add(user)
-            this.setState({ isReady: newReady })
-            if (this.state.isReady.size === 4) {
-                this.startGame(this.state.roomId, user)
-            }
-        })
 
-        this.state.socket.on('updateHighest', (result) => {
-            const calledBy = result.slice(0, 20)
-            const newHighest = result.slice(21)
-
-            this.setState({
-                calledBy: calledBy,
-                currHighest: newHighest,
-            })
-            console.log(`updateHighest rec'd: ${newHighest}`)
-        })
-
-        this.state.socket.on('startCallFail', () => {
-            Swal.fire({
-                title: 'Cannot start calling, not enough people',
-                timer: 2000,
-            })
-        })
-
-        this.state.socket.on('updateNeedToWin', () => {
-            const newNTW =
-                Math.floor(this.state.currHighest / 5) +
-                parseInt(this.state.needToWin)
-            this.setState({ needToWin: newNTW })
-        })
-
-        this.state.socket.on('selectPartner', () => {
-            this.selectPartner()
-        })
     }
 
     //=======================================================================================
@@ -453,78 +467,7 @@ class Room extends Component {
     }
 }
 
-// class RoomHud extends Component {
-//     constructor(props) {
-//         super(props)
-//         this.handleStartButton = this.handleStartButton.bind(this)
-//         this.handleWelcome = this.handleWelcome.bind(this)
-//         this.state = {
-//             displayStart: this.props.displayStart,
-//             socket: this.props.socket,
-//             roomId: this.props.roomId,
-//         }
-//     }
-
-//     handleStartButton() {
-//         this.setState({ displayStart: true })
-//     }
-
-//     handleWelcome() {
-//         this.setState({ displayStart: false })
-//     }
-
-//     render() {
-//         const displayStart = this.state.displayStart
-//         let rendered
-//         if (displayStart) {
-//             rendered = (
-//                 <StartButton
-//                     socket={this.state.socket}
-//                     roomId={this.state.roomId}
-//                 />
-//             )
-//         } else {
-//             rendered = <Welcome roomId={this.state.roomId} />
-//         }
-//         return <div>{rendered}</div>
-//     }
-// }
-
-// class StartButton extends Component {
-//     constructor(props) {
-//         super(props)
-//         this.state = {
-//             roomId: this.props.roomId,
-//             socket: this.props.socket,
-//         }
-//     }
-//     render() {
-//         const buttonStyle = {
-//             width: '700px',
-//             justifyContent: 'center',
-//             alignItems: 'center',
-//             fontSize: '20px',
-//             fontFamily: 'Josephin Sans',
-//             background: 'black',
-//             borderRadius: '5px',
-//             color: 'white',
-//             margin: '10px 0px',
-//             padding: '10px 60px',
-//             cursor: 'pointer',
-//         }
-//         return (
-//             <button
-//                 onClick={() =>
-//                     this.state.socket.emit('startGame', this.state.roomId)
-//                 }
-//                 style={buttonStyle}
-//             >
-//                 Start
-//             </button>
-//         )
-//     }
-// }
-
+//used to render RoundBoard(below), and the player's hand
 const Board = (props) => {
     function showCards(hand, result) {
         hand.forEach((card) =>
@@ -568,8 +511,13 @@ const RoundBoard = (props) => {
     // after each round, add to props.collected
 
     function showSelected(selected, result) {
-        for (let card of selected.keys()) {
-            result.add(<Card face={card.slice(0, 1)} suit={card.slice(1)} />)
+        for (let userFS of selected.keys()) {
+            result.add(
+                <Card
+                    face={userFS.slice(20, 21)}
+                    suit={userFS.slice(21,)}
+                />
+            )
         }
     }
 
