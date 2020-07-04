@@ -69,61 +69,6 @@ class Room extends Component {
     componentDidMount() {
         //this.RoomConfigurator()
 
-        function cardFaceRank(FS) {
-
-            const F = FS.slice(0, 1)
-            let faceValue
-
-            if (F === '2') {
-                faceValue = 0
-            } else if (F === '3') {
-                faceValue = 1
-            } else if (F === '4') {
-                faceValue = 2
-            } else if (F === '5') {
-                faceValue = 3
-            } else if (F === '6') {
-                faceValue = 4
-            } else if (F === '7') {
-                faceValue = 5
-            } else if (F === '8') {
-                faceValue = 6
-            } else if (F === '9') {
-                faceValue = 7
-            } else if (F === 'T') {
-                faceValue = 8
-            } else if (F === 'J') {
-                faceValue = 9
-            } else if (F === 'Q') {
-                faceValue = 10
-            } else if (F === 'K') {
-                faceValue = 11
-            } else if (F === 'A') {
-                faceValue = 12
-            }
-
-            return faceValue
-        }
-
-        function cardSuitRank(FS) {
-
-            const S = FS.slice(1,)
-            let suitValue
-
-            if (S === 'S') {
-                suitValue = 3
-            } else if (S === 'H') {
-                suitValue = 2
-            } else if (S === 'C') {
-                suitValue = 1
-            } else if (S === 'D') {
-                suitValue = 0
-            }
-
-            return suitValue
-        }
-
-
         //copied, bides time in ms
         function sleep(time) {
             return new Promise((resolve) => setTimeout(resolve, time))
@@ -140,118 +85,25 @@ class Room extends Component {
         })
 
         //previously in dealHand
-        this.state.socket.on('cardSelected', (userFS) => {
+        this.state.socket.on('cardSelected', userFS => {
             console.log(userFS)
-            //setState for the selecteed cards
+            //setState for the selected cards
+
             this.setState({
                 selected: this.state.selected.add(userFS),
             })
 
-            //delays 3000 ms 
-            sleep(3000).then(() => {
-                //if there are 4 cards in selected, evaluate and assign winner of set
-                if (this.state.selected.size === 4) {
-
-                    const winningSuit = this.state.currHighest % 5
-
-                    let isHighSuit
-
-                    let winner
-
-                    let highestInSet = 0
-
-                    console.log(`winning suit: ` + winningSuit)
-                    for (let userFS of this.state.selected) {
-                        console.log(userFS.slice(21,))
-                    }
-
-                    if (winningSuit === 0) {
-                        //no trump suit
-
-                        //iterates thru Set 'selected', converts cards into the rank and updates winner and highestInSet
-                        //when there is a higher ranking card  
-                        for (let userFS of this.state.selected) {
-                            const user = userFS.slice(0, 20)
-                            const FS = userFS.slice(20,)
-                            const FSrank = cardSuitRank(FS) * 13 + cardFaceRank(FS)
-                            if (FSrank > highestInSet) {
-                                winner = user
-                                highestInSet = FSrank
-                            }
-                        }
-
-
-                    } else if (winningSuit === 1) {
-                        //diamond trump
-                        isHighSuit = new Set([...this.state.selected].filter(userFS => (userFS.slice(21,) === 'D')))
-                        console.log(isHighSuit)
-                        for (let userFS of isHighSuit) {
-                            const user = userFS.slice(0, 20)
-                            const FS = userFS.slice(20,)
-                            const FSrank = cardFaceRank(FS)
-                            if (FSrank > highestInSet) {
-                                winner = user
-                                highestInSet = FSrank
-                            }
-                        }
-
-                    } else if (winningSuit === 2) {
-                        //club trump
-                        isHighSuit = new Set([...this.state.selected].filter(userFS => (userFS.slice(21,) === 'C')))
-                        console.log(isHighSuit)
-                        for (let userFS of isHighSuit) {
-                            const user = userFS.slice(0, 20)
-                            const FS = userFS.slice(20,)
-                            const FSrank = cardFaceRank(FS)
-                            if (FSrank > highestInSet) {
-                                winner = user
-                                highestInSet = FSrank
-                            }
-                        }
-
-                    } else if (winningSuit === 3) {
-                        //heart trump
-                        isHighSuit = new Set([...this.state.selected].filter(userFS => (userFS.slice(21,) === 'H')))
-                        console.log(isHighSuit)
-                        for (let userFS of isHighSuit) {
-                            const user = userFS.slice(0, 20)
-                            const FS = userFS.slice(20,)
-                            const FSrank = cardFaceRank(FS)
-                            if (FSrank > highestInSet) {
-                                winner = user
-                                highestInSet = FSrank
-                            }
-                        }
-
-                    } else if (winningSuit === 4) {
-                        //spade trump
-                        isHighSuit = new Set([...this.state.selected].filter(userFS => (userFS.slice(21,) === 'S')))
-                        console.log(isHighSuit)
-                        for (let userFS of isHighSuit) {
-                            const user = userFS.slice(0, 20)
-                            const FS = userFS.slice(20,)
-                            const FSrank = cardFaceRank(FS)
-                            if (FSrank > highestInSet) {
-                                winner = user
-                                highestInSet = FSrank
-                            }
-                        }
-                    }
-
-                    this.state.socket.emit('winsSet', winner)
-
-                    //clears the set selected and adds the elements to the set collected
-                    let newCollected = this.state.collected
-                    for (let card of this.state.selected.values()) {
-                        newCollected.add(card)
-                    }
-                    console.log(newCollected)
-                    this.setState({
-                        collected: newCollected,
-                        selected: new Set(),
+            //if there are 4 cards in selected, evaluate and assign winner of set
+            if (this.state.selected.size === 4 && this.state.socket.id === this.state.roomId) {
+                //delays 3s for people to see the last card played
+                sleep(3000).then(() => {
+                    console.log('fire checksetwinner')
+                    this.state.socket.emit('checkSetWinner', {
+                        selected: Array.from(this.state.selected),
+                        currHighest: this.state.currHighest
                     })
-                }
-            })
+                })
+            }
         })
 
         this.state.socket.on('decrementNTW', () => {
@@ -260,9 +112,24 @@ class Room extends Component {
                 this.state.socket.emit('winnerFound', this.state.roomId + this.state.socket.id)
             } else {
                 this.setState({
-                    needToWin: this.state.needToWin - 0.25,
+                    needToWin: this.state.needToWin - 1,
                 })
             }
+            //after decrementing the winner's NTW count, emits roundEnd with roomid 
+            this.state.socket.emit('roundEnd', this.state.roomId)
+
+        })
+
+        this.state.socket.on('resetBoard', () => {
+            let newCollected = this.state.collected
+            for (let card of this.state.selected.values()) {
+                newCollected.add(card)
+            }
+            console.log(newCollected)
+            this.setState({
+                collected: newCollected,
+                selected: new Set(),
+            })
         })
 
         //used to be in callProcess=============================================
@@ -300,9 +167,8 @@ class Room extends Component {
         this.state.socket.on('selectPartner', () => {
             this.selectPartner()
         })
-        //used to be in callProcess=============================================
 
-        //used to be in selectPartner===========================================
+
         this.state.socket.on('assignPartner', (FS) => {
             console.log('assigning in progress')
             if (this.state.hand.includes(FS)) {
@@ -310,7 +176,7 @@ class Room extends Component {
                 this.setState({ needToWin: newNTW })
             }
         })
-        //used to be in selectPartner===========================================
+
 
         this.state.socket.on('winPrompt', (user) => {
             if (this.state.socket.id === user) {

@@ -127,6 +127,60 @@ function canJoin(rmid) {
     return room.length < 4
 }
 
+function cardFaceRank(FS) {
+
+    const F = FS.slice(0, 1)
+    let faceValue
+
+    if (F === '2') {
+        faceValue = 0
+    } else if (F === '3') {
+        faceValue = 1
+    } else if (F === '4') {
+        faceValue = 2
+    } else if (F === '5') {
+        faceValue = 3
+    } else if (F === '6') {
+        faceValue = 4
+    } else if (F === '7') {
+        faceValue = 5
+    } else if (F === '8') {
+        faceValue = 6
+    } else if (F === '9') {
+        faceValue = 7
+    } else if (F === 'T') {
+        faceValue = 8
+    } else if (F === 'J') {
+        faceValue = 9
+    } else if (F === 'Q') {
+        faceValue = 10
+    } else if (F === 'K') {
+        faceValue = 11
+    } else if (F === 'A') {
+        faceValue = 12
+    }
+
+    return faceValue
+}
+
+function cardSuitRank(FS) {
+
+    const S = FS.slice(1,)
+    let suitValue
+
+    if (S === 'S') {
+        suitValue = 3
+    } else if (S === 'H') {
+        suitValue = 2
+    } else if (S === 'C') {
+        suitValue = 1
+    } else if (S === 'D') {
+        suitValue = 0
+    }
+
+    return suitValue
+}
+
 io.on('connection', (socket) => {
     clientIds.push(socket.id)
     // add to the list of sockets in game right now
@@ -291,17 +345,114 @@ io.on('connection', (socket) => {
         }
     })
 
-    socket.on('winsSet', setWinner => {
-        console.log(`setWinner is ${setWinner}`)
-        io.to(setWinner).emit('decrementNTW')
-    })
-
     socket.on('winnerFound', (rmiduser) => {
         const rmid = rmiduser.slice(0, 20)
         const user = rmiduser.slice(20,)
         io.in(rmid).emit('winPrompt', user)
     })
+
+    //====================================
+
+    socket.on('checkSetWinner', ({ selected, currHighest }) => {
+
+        console.log(selected)
+        console.log(currHighest)
+
+        const selectedSet = selected
+        const winningSuit = currHighest % 5
+        let isHighSuit
+        let winner
+
+        let highestInSet = 0
+
+        for (let userFS of selectedSet) {
+            console.log(userFS.slice(21,))
+        }
+
+        if (winningSuit === 0) {
+            //no trump suit
+
+            //iterates thru Set 'selectedSet', converts cards into the rank and updates winner and highestInSet
+            //when there is a higher ranking card  
+            for (let userFS of selectedSet) {
+                const user = userFS.slice(0, 20)
+                const FS = userFS.slice(20,)
+                const FSrank = cardSuitRank(FS) * 13 + cardFaceRank(FS)
+                if (FSrank > highestInSet) {
+                    winner = user
+                    highestInSet = FSrank
+                }
+            }
+
+
+        } else if (winningSuit === 1) {
+            //diamond trump
+            isHighSuit = new Set([...selectedSet].filter(userFS => (userFS.slice(21,) === 'D')))
+            console.log(isHighSuit)
+            for (let userFS of isHighSuit) {
+                const user = userFS.slice(0, 20)
+                const FS = userFS.slice(20,)
+                const FSrank = cardFaceRank(FS)
+                if (FSrank > highestInSet) {
+                    winner = user
+                    highestInSet = FSrank
+                }
+            }
+
+        } else if (winningSuit === 2) {
+            //club trump
+            isHighSuit = new Set([...selectedSet].filter(userFS => (userFS.slice(21,) === 'C')))
+            console.log(isHighSuit)
+            for (let userFS of isHighSuit) {
+                const user = userFS.slice(0, 20)
+                const FS = userFS.slice(20,)
+                const FSrank = cardFaceRank(FS)
+                if (FSrank > highestInSet) {
+                    winner = user
+                    highestInSet = FSrank
+                }
+            }
+
+        } else if (winningSuit === 3) {
+            //heart trump
+            isHighSuit = new Set([...selectedSet].filter(userFS => (userFS.slice(21,) === 'H')))
+            console.log(isHighSuit)
+            for (let userFS of isHighSuit) {
+                const user = userFS.slice(0, 20)
+                const FS = userFS.slice(20,)
+                const FSrank = cardFaceRank(FS)
+                if (FSrank > highestInSet) {
+                    winner = user
+                    highestInSet = FSrank
+                }
+            }
+
+        } else if (winningSuit === 4) {
+            //spade trump
+            isHighSuit = new Set([...selectedSet].filter(userFS => (userFS.slice(21,) === 'S')))
+            console.log(isHighSuit)
+            for (let userFS of isHighSuit) {
+                const user = userFS.slice(0, 20)
+                const FS = userFS.slice(20,)
+                const FSrank = cardFaceRank(FS)
+                if (FSrank > highestInSet) {
+                    winner = user
+                    highestInSet = FSrank
+                }
+            }
+        }
+        console.log(winner)
+        io.to(winner).emit('decrementNTW')
+    })
+
+    socket.on('roundEnd', (rmid) => {
+        //on receiving roundEnd, emits a call to clear all 'selected' Sets and update 'Collected' Sets
+        //for all clients in rmid
+        io.in(rmid).emit('resetBoard')
+    })
+
 })
+//end socket listener dump
 
 function dealHand(rmid) {
     io.of('/').adapter.clients([rmid], (err, clients) => {
