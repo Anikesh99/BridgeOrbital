@@ -269,15 +269,13 @@ io.on('connection', (socket) => {
     })
 
     socket.on('clickedCard', (roomuserFS) => {
-        //console.log(result + " clicked")
+
         const room = roomuserFS.slice(0, 20)
         const userFS = roomuserFS.slice(20,)
-        //const fs = result.slice(20,)
-        // console.log(rmid)
-        // console.log(card)
+
         // io.of('/').adapter.clients([rmid], (err, clients) => {
         io.in(room).emit('cardSelected', userFS)
-        //console.log(fs)
+
     })
 
     socket.on('leaveRoom', (roomId) => {
@@ -292,9 +290,8 @@ io.on('connection', (socket) => {
         // socket.leave(socket.roomId)
     })
 
-    socket.on('partnerQuery', ({ rmid, FS, newNTW }) => {
-        //console.log('rmid:' + rmid + ' partner card:' + FS)
-        io.in(rmid).emit('assignPartner', { FS: FS, newNTW: newNTW })
+    socket.on('partnerQuery', ({ rmid, FS, newNTW, sentBy }) => {
+        io.in(rmid).emit('assignPartner', { FS: FS, newNTW: newNTW, sentBy: sentBy })
     })
 
     socket.on('callStart', (result) => {
@@ -348,7 +345,7 @@ io.on('connection', (socket) => {
 
     //====================================
 
-    socket.on('checkSetWinner', ({ selected, currHighest }) => {
+    socket.on('checkSetWinner', ({ rmid, selected, currHighest }) => {
 
         //console.log(selected)
         //console.log(currHighest)
@@ -432,16 +429,8 @@ io.on('connection', (socket) => {
                 }
             }
         }
-        console.log(winner)
-        io.to(winner).emit('decrementNTW')
+        io.in(rmid).emit('foundSetWinner', winner)
     })
-
-    socket.on('roundEnd', (rmid) => {
-        //on receiving roundEnd, emits a call to clear all 'selected' Sets and update 'Collected' Sets
-        //for all clients in rmid
-        io.in(rmid).emit('resetBoard')
-    })
-
 })
 //end socket listener dump
 

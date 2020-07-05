@@ -69,7 +69,7 @@ class Room extends Component {
     componentDidMount() {
         //this.RoomConfigurator()
 
-        //copied, bides time in ms
+        //copied, delays time in ms
         function sleep(time) {
             return new Promise((resolve) => setTimeout(resolve, time))
         }
@@ -97,8 +97,8 @@ class Room extends Component {
             if (this.state.selected.size === 4 && this.state.socket.id === this.state.roomId) {
                 //delays 3s for people to see the last card played
                 sleep(3000).then(() => {
-                    console.log('fire checksetwinner')
                     this.state.socket.emit('checkSetWinner', {
+                        rmid: this.state.roomId,
                         selected: Array.from(this.state.selected),
                         currHighest: this.state.currHighest
                     })
@@ -106,30 +106,19 @@ class Room extends Component {
             }
         })
 
-        this.state.socket.on('decrementNTW', () => {
-            console.log(`sweet sweet decrements`)
+        this.state.socket.on('foundSetWinner', (winner) => {
             if (this.state.needToWin === 1) {
-                this.state.socket.emit('winnerFound', this.state.roomId + this.state.socket.id)
+                this.whoTheWinner(winner)
             } else {
-                this.setState({
-                    needToWin: this.state.needToWin - 1,
-                })
+                if ((this.state.socket.id === winner) || (this.state.partner === winner)) {
+                    this.setState({
+                        needToWin: this.state.needToWin - 1,
+                    })
+                } else {
+                    //lost set but still nv lose game
+                }
+                this.clearBoard()
             }
-            //after decrementing the winner's NTW count, emits roundEnd with roomid 
-            this.state.socket.emit('roundEnd', this.state.roomId)
-
-        })
-
-        this.state.socket.on('resetBoard', () => {
-            let newCollected = this.state.collected
-            for (let card of this.state.selected.values()) {
-                newCollected.add(card)
-            }
-            console.log(newCollected)
-            this.setState({
-                collected: newCollected,
-                selected: new Set(),
-            })
         })
 
         //used to be in callProcess=============================================
@@ -163,23 +152,42 @@ class Room extends Component {
             this.selectPartner(lastuser)
         })
 
-        this.state.socket.on('assignPartner', ({ FS, newNTW }) => {
-            console.log('assigning in progress')
+        this.state.socket.on('assignPartner', ({ FS, newNTW, sentBy }) => {
+            //console.log('assigning in progress')
             if (this.state.hand.includes(FS)) {
                 this.updateNeedToWin(newNTW)
-            }
-        })
-
-        this.state.socket.on('winPrompt', (user) => {
-            if (this.state.socket.id === user) {
-                Swal.fire(`Congrats!\nYou beat your friends and they're bad at this game`)
-            } else {
-                Swal.fire(`Whoops!\n${user} beat your ass teeheexd`)
+                this.setState({
+                    partner: sentBy
+                })
             }
         })
     }
 
     //end componentdidmount===============================================================================================
+
+    clearBoard = () => {
+
+        let newCollected = this.state.collected
+        //add all cards in selected to collected
+        for (let card of this.state.selected.values()) {
+            newCollected.add(card)
+        }
+        this.setState({
+            collected: newCollected,
+            selected: new Set(),
+        })
+
+    }
+
+    whoTheWinner = (guy) => {
+        if (this.state.socket.id === guy) {
+            Swal.fire(`Congrats!\nYou beat your friends and they're bad at this game`)
+        } else if (this.state.partner === guy) {
+            Swal.fire(`Congrats!\nYou got carried you boosted animal`)
+        } else {
+            Swal.fire(`Whoops!\n${guy}'s team beat your ass teeheexd`)
+        }
+    }
 
     clickCard = (e, card) => {
         const cardString = JSON.stringify(card)
@@ -204,7 +212,6 @@ class Room extends Component {
 
     dealQuery = () => {
         this.state.socket.emit('dealQuery', this.state.roomId)
-
         this.state.socket.on('playersNeeded', () => {
             Swal.fire({
                 title: 'Not enough players yet',
@@ -252,6 +259,7 @@ class Room extends Component {
                             rmid: this.state.roomId,
                             FS: result.value,
                             newNTW: this.state.needToWin,
+                            sentBy: this.state.socket.id
                         }
                     )
                 }
@@ -392,6 +400,7 @@ class Room extends Component {
         return (
             <div>
                 <div>
+                    your partner is {this.state.partner}
                     Welcome, player {this.state.socket.id} to room{' '}
                     {this.state.roomId}
                 </div>
