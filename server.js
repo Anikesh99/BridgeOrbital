@@ -254,9 +254,6 @@ io.on('connection', (socket) => {
         // console.log('user:' + user)
         // console.log('rmid:' + rmid)
         //console.log('isReadySize:' + isReadySize)
-        if (parseInt(isReadySize) === 3) {
-            io.to(user).emit('updateNeedToWin')
-        }
         io.in(rmid).emit('isReady', user)
     })
 
@@ -295,11 +292,9 @@ io.on('connection', (socket) => {
         // socket.leave(socket.roomId)
     })
 
-    socket.on('partnerQuery', (rmidFS) => {
-        const rmid = rmidFS.slice(0, 20)
-        const FS = rmidFS.slice(21,)
-        console.log('rmid:' + rmid + ' partner card:' + FS)
-        io.to(rmid).emit('assignPartner', FS)
+    socket.on('partnerQuery', ({ rmid, FS, newNTW }) => {
+        //console.log('rmid:' + rmid + ' partner card:' + FS)
+        io.in(rmid).emit('assignPartner', { FS: FS, newNTW: newNTW })
     })
 
     socket.on('callStart', (result) => {
@@ -317,6 +312,7 @@ io.on('connection', (socket) => {
         }
     })
 
+
     socket.on('callResult', (result) => {
         const userid = result.slice(0, 21)
         const rmid = result.slice(21, 41)
@@ -332,11 +328,10 @@ io.on('connection', (socket) => {
         io.in(rmid).emit('updateHighest', userid + ' ' + called)
     })
 
-    socket.on('startGame', (result) => {
-        const rmid = result.slice(0, 21)
-        const lastuser = result.slice(21)
-
-        io.to(lastuser).emit('selectPartner')
+    socket.on('startGame', ({ rmid, lastuser }) => {
+        const room = rmid
+        const last = lastuser
+        io.in(room).emit('selectPartner', last)
     })
 
     socket.on('checkNumber', (rmid) => {
@@ -355,8 +350,8 @@ io.on('connection', (socket) => {
 
     socket.on('checkSetWinner', ({ selected, currHighest }) => {
 
-        console.log(selected)
-        console.log(currHighest)
+        //console.log(selected)
+        //console.log(currHighest)
 
         const selectedSet = selected
         const winningSuit = currHighest % 5
@@ -364,10 +359,6 @@ io.on('connection', (socket) => {
         let winner
 
         let highestInSet = 0
-
-        for (let userFS of selectedSet) {
-            console.log(userFS.slice(21,))
-        }
 
         if (winningSuit === 0) {
             //no trump suit

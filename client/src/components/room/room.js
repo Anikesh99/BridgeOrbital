@@ -108,7 +108,7 @@ class Room extends Component {
 
         this.state.socket.on('decrementNTW', () => {
             console.log(`sweet sweet decrements`)
-            if (this.state.needTowin === 1) {
+            if (this.state.needToWin === 1) {
                 this.state.socket.emit('winnerFound', this.state.roomId + this.state.socket.id)
             } else {
                 this.setState({
@@ -159,24 +159,16 @@ class Room extends Component {
             })
         })
 
-        this.state.socket.on('updateNeedToWin', () => {
-            const newNTW = Math.floor(this.state.currHighest / 5) + parseInt(this.state.needToWin)
-            this.setState({ needToWin: newNTW })
+        this.state.socket.on('selectPartner', lastuser => {
+            this.selectPartner(lastuser)
         })
 
-        this.state.socket.on('selectPartner', () => {
-            this.selectPartner()
-        })
-
-
-        this.state.socket.on('assignPartner', (FS) => {
+        this.state.socket.on('assignPartner', ({ FS, newNTW }) => {
             console.log('assigning in progress')
             if (this.state.hand.includes(FS)) {
-                const newNTW = Math.floor(this.state.currHighest / 5) + parseInt(this.state.needToWin)
-                this.setState({ needToWin: newNTW })
+                this.updateNeedToWin(newNTW)
             }
         })
-
 
         this.state.socket.on('winPrompt', (user) => {
             if (this.state.socket.id === user) {
@@ -207,7 +199,7 @@ class Room extends Component {
         const {
             match: { params },
         } = this.props
-        this.state.socket.emit('startGame', rmid + ' ' + lastuser)
+        this.state.socket.emit('startGame', { rmid: rmid, lastuser: lastuser })
     }
 
     dealQuery = () => {
@@ -220,35 +212,53 @@ class Room extends Component {
         })
     }
 
-    selectPartner = () => {
-        Swal.fire({
-            title: 'Select your partner, enter value in [face][suit]',
-            input: 'text',
-            confirmButtonText: 'Confirm',
-        }).then((result) => {
-            if (this.state.hand.includes(result.value)) {
-                Swal.fire({
-                    title: `You cannot select yourself`,
-                    timer: 2000,
-                })
-                //console.log('cannot select yourself as partner')
-                this.selectPartner()
-            } else if (result.value === '') {
-                console.log('no partner selected')
-                Swal.fire({
-                    title: 'no partner selected',
-                    timer: '2000',
-                })
-                this.selectPartner()
-            } else {
-                console.log('other partner selected')
-                this.state.socket.emit(
-                    'partnerQuery',
-                    this.state.roomId + ' ' + result.value
-                )
-            }
+    updateNeedToWin = (newNTW) => {
+        this.setState({
+            needToWin: newNTW
         })
+    }
 
+    selectPartner = (lastuser) => {
+        if (this.state.socket.id === lastuser) {
+            //this.updateCallingAdd()
+            //console.log('callingadd: ' + this.state.callingAddition)
+            this.setState({
+                needToWin: parseFloat(this.state.needToWin, 10) + parseFloat(Math.floor(this.state.currHighest / 5) / 4, 10)
+            })
+            Swal.fire({
+                title: 'Select your partner, enter value in [face][suit]',
+                input: 'text',
+                confirmButtonText: 'Confirm',
+            }).then((result) => {
+                if (this.state.hand.includes(result.value)) {
+                    Swal.fire({
+                        title: `You cannot select yourself`,
+                        timer: 2000,
+                    })
+                    //console.log('cannot select yourself as partner')
+                    this.selectPartner()
+                } else if (result.value === '') {
+                    console.log('no partner selected')
+                    Swal.fire({
+                        title: 'no partner selected',
+                        timer: '2000',
+                    })
+                    this.selectPartner()
+                } else {
+                    console.log('other partner selected')
+                    this.state.socket.emit(
+                        'partnerQuery',
+                        {
+                            rmid: this.state.roomId,
+                            FS: result.value,
+                            newNTW: this.state.needToWin,
+                        }
+                    )
+                }
+            })
+        } else {
+            Swal.fire(`${lastuser} won the bet, wait for the partner picking thing`)
+        }
     }
 
     callProcess = () => {
