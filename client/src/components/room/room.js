@@ -61,6 +61,7 @@ class Room extends Component {
             isReady: new Set(),
             needToWin: '7',
             partner: '',
+            wonSets: '0',
         }
     }
 
@@ -96,7 +97,7 @@ class Room extends Component {
             //if there are 4 cards in selected, evaluate and assign winner of set
             if (this.state.selected.size === 4 && this.state.socket.id === this.state.roomId) {
                 //delays 3s for people to see the last card played
-                sleep(3000).then(() => {
+                sleep().then(() => {
                     this.state.socket.emit('checkSetWinner', {
                         rmid: this.state.roomId,
                         selected: Array.from(this.state.selected),
@@ -110,6 +111,12 @@ class Room extends Component {
             if (this.state.needToWin === 1) {
                 this.whoTheWinner(winner)
             } else {
+                if (this.state.socket.id === winner) {
+                    this.setState({
+                        wonSets: parseInt(this.state.wonSets, 10) + 1
+                    })
+                }
+
                 if ((this.state.socket.id === winner) || (this.state.partner === winner)) {
                     this.setState({
                         needToWin: this.state.needToWin - 1,
@@ -160,6 +167,10 @@ class Room extends Component {
                     partner: sentBy
                 })
             }
+        })
+
+        this.state.socket.on('fakeWinTesting', user => {
+            this.whoTheWinner(user)
         })
     }
 
@@ -365,6 +376,7 @@ class Room extends Component {
             calledBy,
             isReady,
             needToWin,
+            wonSets,
         } = this.state
 
         //socket listeners======================================================================================
@@ -400,9 +412,8 @@ class Room extends Component {
         return (
             <div>
                 <div>
-                    your partner is {this.state.partner}
-                    Welcome, player {this.state.socket.id} to room{' '}
-                    {this.state.roomId}
+                    {/*Your partner is {this.state.partner}*/}
+                    Welcome, player {this.state.socket.id} to room {this.state.roomId}
                 </div>
 
                 <button
@@ -473,16 +484,38 @@ class Room extends Component {
                             currHighest={currHighest}
                             calledBy={calledBy}
                             isReady={isReady}
-                            needToWin={needToWin}
+                            wonSets={wonSets}
                         />
                     </div>
                     {/* <button style={buttonStyle} onClick={this.dealQuery}>
                         Deal hands
                     </button> */}
-                    <button style={buttonStyle} onClick={this.callProcess}>
+                    <button style={longButton} onClick={this.callProcess}>
                         Begin calling
                     </button>
-
+                    <button
+                        style={longButton}
+                        onClick={() => this.state.socket.emit('testWinner', {
+                            user: this.state.socket.id,
+                            rmid: this.state.roomId
+                        })
+                        }>
+                        Fake win trigger, testing
+                    </button>
+                    <button
+                        style={longButton}
+                        onClick={() => {
+                            Swal.fire({
+                                title: 'input partner',
+                                input: 'text'
+                            }).then((result) => {
+                                this.setState({
+                                    partner: result.value
+                                })
+                            })
+                        }}>
+                        Fake partner allaocation for testing
+                    </button>
                     {/* <button
                         onClick={() =>
                             this.state.socket.emit('startGame', this.state.roomId)
@@ -529,8 +562,8 @@ const Board = (props) => {
                 <br />
                 {new Array(...props.isReady).join(', ')} is/are ready to start
                 <br />
-                You need {props.needToWin} sets to win
-            </div>
+                You have won {props.wonSets} hand(s) so far
+                </div>
         </div>
     )
 }

@@ -431,6 +431,13 @@ io.on('connection', (socket) => {
         }
         io.in(rmid).emit('foundSetWinner', winner)
     })
+
+    //for testing purposes
+    socket.on('testWinner', ({ user, rmid }) => {
+        console.log(user)
+        console.log(rmid)
+        io.in(rmid).emit('fakeWinTesting', user)
+    })
 })
 //end socket listener dump
 
