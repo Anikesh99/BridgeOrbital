@@ -538,7 +538,7 @@ class Room extends Component {
                         }>
                         Fake win trigger, testing
                     </button>
-                    <button
+                    {/* <button
                         style={longButton}
                         onClick={() => {
                             Swal.fire({
@@ -551,7 +551,7 @@ class Room extends Component {
                             })
                         }}>
                         Fake partner allaocation for testing
-                    </button>
+                    </button> */}
                     {/* <button
                         onClick={() =>
                             this.state.socket.emit('startGame', this.state.roomId)
