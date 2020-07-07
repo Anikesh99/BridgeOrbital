@@ -62,6 +62,8 @@ class Room extends Component {
             needToWin: '7',
             partner: '',
             wonSets: '0',
+            partnerCarder: false,
+            callWinner: false,
         }
     }
 
@@ -128,7 +130,6 @@ class Room extends Component {
             }
         })
 
-        //used to be in callProcess=============================================
         this.state.socket.on('isReady', (user) => {
             const newReady = this.state.isReady.add(user)
             this.setState({ isReady: newReady })
@@ -164,14 +165,45 @@ class Room extends Component {
             if (this.state.hand.includes(FS)) {
                 this.updateNeedToWin(newNTW)
                 this.setState({
-                    partner: sentBy
+                    partner: sentBy,
+                    partnerCarder: true
                 })
+                this.state.socket.emit('partnerPresent', ({
+                    partner: this.state.partner,
+                    user: this.state.socket.id,
+                    rmid: this.state.roomId
+                }))
+            } else {
+                if (this.state.socket.id !== sentBy) {
+                    this.state.socket.emit('otherTwo', ({
+                        user: this.state.socket.id,
+                        rmid: this.state.roomId
+                    }))
+                }
             }
         })
 
         this.state.socket.on('fakeWinTesting', user => {
             this.whoTheWinner(user)
         })
+
+        this.state.socket.on('otherTwoPartner', otherUser => {
+            if (otherUser !== this.state.socket.id && !this.state.partnerCarder && this.state.partner === '' && !this.state.callWinner) {
+                this.setState({
+                    partner: otherUser,
+                    needToWin: 14 - (parseInt(this.state.needToWin, 10) + parseInt(Math.floor(this.state.currHighest / 5), 10))
+                })
+            }
+        })
+
+        this.state.socket.on('backwardsRecd', ({ partner, user }) => {
+            if (partner === this.state.socket.id && this.state.partner === '' && !this.state.partnerCarder) {
+                this.setState({
+                    partner: user
+                })
+            }
+        })
+
     }
 
     //end componentdidmount===============================================================================================
@@ -264,6 +296,7 @@ class Room extends Component {
                     this.selectPartner()
                 } else {
                     console.log('other partner selected')
+                    this.setState({ callWinner: true })
                     this.state.socket.emit(
                         'partnerQuery',
                         {
@@ -412,8 +445,11 @@ class Room extends Component {
         return (
             <div>
                 <div>
-                    {/*Your partner is {this.state.partner}*/}
+                    Your partner is {this.state.partner}
+                    <br />
                     Welcome, player {this.state.socket.id} to room {this.state.roomId}
+                    <br />
+                    needToWin {needToWin}
                 </div>
 
                 <button
@@ -525,7 +561,7 @@ class Room extends Component {
                         Start
                     </button> */}
                 </React.Fragment>
-            </div>
+            </div >
         )
     }
 }

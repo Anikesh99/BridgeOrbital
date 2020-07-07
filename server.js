@@ -438,6 +438,17 @@ io.on('connection', (socket) => {
         console.log(rmid)
         io.in(rmid).emit('fakeWinTesting', user)
     })
+
+    socket.on('otherTwo', ({ user, rmid }) => {
+        io.in(rmid).emit('otherTwoPartner', user)
+    })
+
+    socket.on('partnerPresent', ({ partner, user, rmid }) => {
+        io.in(rmid).emit('backwardsRecd', ({
+            partner: partner,
+            user: user
+        }))
+    })
 })
 //end socket listener dump
 
