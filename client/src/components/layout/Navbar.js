@@ -6,21 +6,21 @@ class Navbar extends Component {
     return (
       <div className="navbar-fixed">
         <nav className="z-depth-0">
-          <div className="nav-wrapper white">
+          <div className="nav-wrapper black">
             <Link to="/"
               style={{
                 fontFamily: "Calibri",
-                fontSize: 18
+                fontSize: 24,
               }}
-              className="col s12 left black-text">
+              className="col s12 left white-text">
               Bridge.com
               </Link>
             <Link to="/room"
               style={{
                 fontFamily: "Calibri",
-                fontSize: 18
+                fontSize: 18,
               }}
-              className="col s12 right black-text">
+              className="col s12 right white-text">
               {/* <i className="material-icons">code</i> */}
                 Continue as guest
               </Link>

@@ -15,7 +15,7 @@ function resultInWords(x) {
     }
     let suit
     if (x % 5 === 0) {
-        suit = 'No trump'
+        suit = 'no trump'
     } else if (x % 5 === 1) {
         suit = 'Diamond'
     } else if (x % 5 === 2) {
@@ -410,6 +410,7 @@ class Room extends Component {
             isReady,
             needToWin,
             wonSets,
+            partner
         } = this.state
 
         //socket listeners======================================================================================
@@ -442,14 +443,26 @@ class Room extends Component {
             cursor: 'pointer',
         }
 
+
+
         return (
             <div>
                 <div>
-                    Your partner is {this.state.partner}
+                    <img
+                        src="https://static.guides.co/a/uploads/1063%2F4suits.png"
+                        alt="new"
+                    />
                     <br />
+                    {/*the statement at the bottom is for debugging */}
+                    {/* Your partner is {this.state.partner} */}
+                    <br />
+                    {/* needToWin {needToWin} */}
+                </div>
+
+                <div style={{
+                    fontSize: 24
+                }}>
                     Welcome, player {this.state.socket.id} to room {this.state.roomId}
-                    <br />
-                    needToWin {needToWin}
                 </div>
 
                 <button
@@ -521,15 +534,17 @@ class Room extends Component {
                             calledBy={calledBy}
                             isReady={isReady}
                             wonSets={wonSets}
+                            partner={partner}
                         />
                     </div>
                     {/* <button style={buttonStyle} onClick={this.dealQuery}>
-                        Deal hands
                     </button> */}
                     <button style={longButton} onClick={this.callProcess}>
                         Begin calling
                     </button>
-                    <button
+
+                    {/*to test the win triggers*/}
+                    {/* <button
                         style={longButton}
                         onClick={() => this.state.socket.emit('testWinner', {
                             user: this.state.socket.id,
@@ -538,6 +553,7 @@ class Room extends Component {
                         }>
                         Fake win trigger, testing
                     </button>
+                     */}
                     {/* <button
                         style={longButton}
                         onClick={() => {
@@ -587,16 +603,32 @@ const Board = (props) => {
     showCards(props.hand, result)
     let PepeHands = () => result
 
+    function callingDisplay(input) {
+        if (input === '') {
+            return 'Current highest call '
+        } else {
+            return 'Call winner '
+        }
+    }
+
+    function isReadyEmpty(set) {
+        if (set.size === 0) {
+            return 'Nobody'
+        } else {
+            return new Array(...set).join(', ')
+        }
+    }
+
     return (
         <div>
             <RoundBoard selected={props.selected} />
             <PepeHands />
-            <div>
+            <div style={{ fontSize: 20 }}>
                 {/*should probably pick a better font for this*/}
-                Current highest is: {resultInWords(props.currHighest)}, called
+                {callingDisplay(props.partner)} is: {resultInWords(props.currHighest)}, called
                 by {props.calledBy}
                 <br />
-                {new Array(...props.isReady).join(', ')} is/are ready to start
+                {isReadyEmpty(props.isReady)} is/are ready to start
                 <br />
                 You have won {props.wonSets} hand(s) so far
                 </div>
