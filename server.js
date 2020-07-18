@@ -7,15 +7,47 @@ const express = require('express')
 const path = require('path')
 const app = express()
 const http = require('http').Server(app)
-const io = require('socket.io')(http)
+// const io = require('socket.io')(http)
 const PORT = process.env.PORT || 5000
 // const index = require('./client')
 
+app.use(
+    bodyParser.urlencoded({
+        extended: false,
+    })
+)
+app.use(bodyParser.json())
+const db = require('./config/keys').mongoURI
+
+mongoose
+    .connect(process.env.MONGODB_URI || db, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+    })
+    .then(() => console.log('MongoDB successfully connected'))
+    .catch((err) => console.log(err))
+
+app.use(passport.initialize())
+
+require('./config/passport')(passport)
+app.use('/api/users', users)
+
+app.use(express.static('client/build'))
+
+let server = app.listen(PORT, () =>
+    console.log(`Server up and running on port ${PORT} !`)
+)
+
+const socket = require('socket.io')
+// NOTE: For some reason socket.io only works if "node server.js" is used when running the app
+// Starting a socket on the specified server
+let io = socket(server)
+
+io.on('connection', (socket) => {})
 //For the rooms
 const { cardsInitialState, startNewGame } = require('./client/src/util')
 const { default: Swal } = require('sweetalert2')
 const { secretOrKey } = require('./config/keys')
-const socket = require('socket.io-client/lib/socket')
 // in the tut they use this to modify states and keep track
 let clientIds = []
 let rooms = []
@@ -478,27 +510,4 @@ function dealHand(rmid) {
 
 // http.listen(process.env.PORT || 4000, () => console.log(`I am connected yayy`))
 
-app.use(
-    bodyParser.urlencoded({
-        extended: false,
-    })
-)
-app.use(bodyParser.json())
-const db = require('./config/keys').mongoURI
-
-mongoose
-    .connect(process.env.MONGODB_URI || db, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    })
-    .then(() => console.log('MongoDB successfully connected'))
-    .catch((err) => console.log(err))
-
-app.use(passport.initialize())
-
-require('./config/passport')(passport)
-app.use('/api/users', users)
-
-app.use(express.static('client/build'))
-
-http.listen(PORT, () => console.log(`Server up and running on port ${PORT} !`))
+// http.listen(PORT, () => console.log(`Server up and running on port ${PORT} !`))
