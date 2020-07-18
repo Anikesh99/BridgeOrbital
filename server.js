@@ -6,7 +6,7 @@ const users = require('./routes/api/users')
 const express = require('express')
 const path = require('path')
 const app = express()
-const http = require('http').createServer(app)
+const http = require('http').Server(app)
 const io = require('socket.io')(http)
 const PORT = process.env.PORT || 5000
 // const index = require('./client')
@@ -501,4 +501,4 @@ app.use('/api/users', users)
 
 app.use(express.static('client/build'))
 
-app.listen(PORT, () => console.log(`Server up and running on port ${PORT} !`))
+http.listen(PORT, () => console.log(`Server up and running on port ${PORT} !`))
