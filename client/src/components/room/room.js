@@ -294,7 +294,7 @@ class Room extends Component {
         } else if (this.state.partner === guy) {
             Swal.fire(`Congrats!\nYou got carried you boosted animal`)
         } else {
-            Swal.fire(`Whoops!\n${guy}'s team beat your ass teeheexd`)
+            Swal.fire(`Whoops!\n${this.state.nameList.get(guy)}'s team beat your ass teeheexd`)
         }
     }
 
@@ -381,7 +381,7 @@ class Room extends Component {
             })
         } else {
             Swal.fire(
-                `${lastuser} won the bet, wait for the partner picking thing`
+                `${this.state.nameList.get(lastuser)} won the bet, wait for the partner picking thing`
             )
         }
     }
