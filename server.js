@@ -128,7 +128,6 @@ function canJoin(rmid) {
 }
 
 function cardFaceRank(FS) {
-
     const F = FS.slice(0, 1)
     let faceValue
 
@@ -164,8 +163,7 @@ function cardFaceRank(FS) {
 }
 
 function cardSuitRank(FS) {
-
-    const S = FS.slice(1,)
+    const S = FS.slice(1)
     let suitValue
 
     if (S === 'S') {
@@ -259,7 +257,10 @@ io.on('connection', (socket) => {
 
     socket.on('displayCard', (str) => {
         console.log(
-            `displayCard() on server called, card is ${str.slice(0, 1)} of ${str.slice(1)}`
+            `displayCard() on server called, card is ${str.slice(
+                0,
+                1
+            )} of ${str.slice(1)}`
         )
     })
 
@@ -269,13 +270,11 @@ io.on('connection', (socket) => {
     })
 
     socket.on('clickedCard', (roomuserFS) => {
-
         const room = roomuserFS.slice(0, 20)
-        const userFS = roomuserFS.slice(20,)
+        const userFS = roomuserFS.slice(20)
 
         // io.of('/').adapter.clients([rmid], (err, clients) => {
         io.in(room).emit('cardSelected', userFS)
-
     })
 
     socket.on('leaveRoom', (roomId) => {
@@ -291,7 +290,11 @@ io.on('connection', (socket) => {
     })
 
     socket.on('partnerQuery', ({ rmid, FS, newNTW, sentBy }) => {
-        io.in(rmid).emit('assignPartner', { FS: FS, newNTW: newNTW, sentBy: sentBy })
+        io.in(rmid).emit('assignPartner', {
+            FS: FS,
+            newNTW: newNTW,
+            sentBy: sentBy,
+        })
     })
 
     socket.on('callStart', (result) => {
@@ -308,7 +311,6 @@ io.on('connection', (socket) => {
             io.emit('startCallFail')
         }
     })
-
 
     socket.on('callResult', (result) => {
         const userid = result.slice(0, 21)
@@ -339,14 +341,13 @@ io.on('connection', (socket) => {
 
     socket.on('winnerFound', (rmiduser) => {
         const rmid = rmiduser.slice(0, 20)
-        const user = rmiduser.slice(20,)
+        const user = rmiduser.slice(20)
         io.in(rmid).emit('winPrompt', user)
     })
 
     //====================================
 
     socket.on('checkSetWinner', ({ rmid, selected, currHighest }) => {
-
         //console.log(selected)
         //console.log(currHighest)
 
@@ -361,67 +362,70 @@ io.on('connection', (socket) => {
             //no trump suit
 
             //iterates thru Set 'selectedSet', converts cards into the rank and updates winner and highestInSet
-            //when there is a higher ranking card  
+            //when there is a higher ranking card
             for (let userFS of selectedSet) {
                 const user = userFS.slice(0, 20)
-                const FS = userFS.slice(20,)
+                const FS = userFS.slice(20)
                 const FSrank = cardSuitRank(FS) * 13 + cardFaceRank(FS)
                 if (FSrank > highestInSet) {
                     winner = user
                     highestInSet = FSrank
                 }
             }
-
-
         } else if (winningSuit === 1) {
             //diamond trump
-            isHighSuit = new Set([...selectedSet].filter(userFS => (userFS.slice(21,) === 'D')))
+            isHighSuit = new Set(
+                [...selectedSet].filter((userFS) => userFS.slice(21) === 'D')
+            )
             console.log(isHighSuit)
             for (let userFS of isHighSuit) {
                 const user = userFS.slice(0, 20)
-                const FS = userFS.slice(20,)
+                const FS = userFS.slice(20)
                 const FSrank = cardFaceRank(FS)
                 if (FSrank > highestInSet) {
                     winner = user
                     highestInSet = FSrank
                 }
             }
-
         } else if (winningSuit === 2) {
             //club trump
-            isHighSuit = new Set([...selectedSet].filter(userFS => (userFS.slice(21,) === 'C')))
+            isHighSuit = new Set(
+                [...selectedSet].filter((userFS) => userFS.slice(21) === 'C')
+            )
             console.log(isHighSuit)
             for (let userFS of isHighSuit) {
                 const user = userFS.slice(0, 20)
-                const FS = userFS.slice(20,)
+                const FS = userFS.slice(20)
                 const FSrank = cardFaceRank(FS)
                 if (FSrank > highestInSet) {
                     winner = user
                     highestInSet = FSrank
                 }
             }
-
         } else if (winningSuit === 3) {
             //heart trump
-            isHighSuit = new Set([...selectedSet].filter(userFS => (userFS.slice(21,) === 'H')))
+            isHighSuit = new Set(
+                [...selectedSet].filter((userFS) => userFS.slice(21) === 'H')
+            )
             console.log(isHighSuit)
             for (let userFS of isHighSuit) {
                 const user = userFS.slice(0, 20)
-                const FS = userFS.slice(20,)
+                const FS = userFS.slice(20)
                 const FSrank = cardFaceRank(FS)
                 if (FSrank > highestInSet) {
                     winner = user
                     highestInSet = FSrank
                 }
             }
-
         } else if (winningSuit === 4) {
             //spade trump
-            isHighSuit = new Set([...selectedSet].filter(userFS => (userFS.slice(21,) === 'S')))
+            isHighSuit = new Set(
+                [...selectedSet].filter((userFS) => userFS.slice(21) === 'S')
+            )
             console.log(isHighSuit)
             for (let userFS of isHighSuit) {
                 const user = userFS.slice(0, 20)
-                const FS = userFS.slice(20,)
+                const FS = userFS.slice(20)
                 const FSrank = cardFaceRank(FS)
                 if (FSrank > highestInSet) {
                     winner = user
@@ -444,10 +448,10 @@ io.on('connection', (socket) => {
     })
 
     socket.on('partnerPresent', ({ partner, user, rmid }) => {
-        io.in(rmid).emit('backwardsRecd', ({
+        io.in(rmid).emit('backwardsRecd', {
             partner: partner,
-            user: user
-        }))
+            user: user,
+        })
     })
 })
 //end socket listener dump
@@ -472,7 +476,7 @@ function dealHand(rmid) {
     })
 }
 
-http.listen(PORT, () => console.log(`I am connected yayy`))
+http.listen(process.env.PORT || 4000, () => console.log(`I am connected yayy`))
 
 app.use(
     bodyParser.urlencoded({

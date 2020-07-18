@@ -4,7 +4,7 @@ import Swal from 'sweetalert2'
 import { Card, HandStyles, CardStyles, Hand } from 'react-casino'
 import socket from 'socket.io-client/lib/socket'
 
-const ENDPOINT = 'http://127.0.0.1:5000'
+const ENDPOINT = 'http://127.0.0.1:4000'
 
 function resultInWords(x) {
     let num
@@ -88,7 +88,7 @@ class Room extends Component {
         })
 
         //previously in dealHand
-        this.state.socket.on('cardSelected', userFS => {
+        this.state.socket.on('cardSelected', (userFS) => {
             console.log(userFS)
             //setState for the selected cards
 
@@ -97,13 +97,16 @@ class Room extends Component {
             })
 
             //if there are 4 cards in selected, evaluate and assign winner of set
-            if (this.state.selected.size === 4 && this.state.socket.id === this.state.roomId) {
+            if (
+                this.state.selected.size === 4 &&
+                this.state.socket.id === this.state.roomId
+            ) {
                 //delays 3s for people to see the last card played
                 sleep().then(() => {
                     this.state.socket.emit('checkSetWinner', {
                         rmid: this.state.roomId,
                         selected: Array.from(this.state.selected),
-                        currHighest: this.state.currHighest
+                        currHighest: this.state.currHighest,
                     })
                 })
             }
@@ -115,11 +118,14 @@ class Room extends Component {
             } else {
                 if (this.state.socket.id === winner) {
                     this.setState({
-                        wonSets: parseInt(this.state.wonSets, 10) + 1
+                        wonSets: parseInt(this.state.wonSets, 10) + 1,
                     })
                 }
 
-                if ((this.state.socket.id === winner) || (this.state.partner === winner)) {
+                if (
+                    this.state.socket.id === winner ||
+                    this.state.partner === winner
+                ) {
                     this.setState({
                         needToWin: this.state.needToWin - 1,
                     })
@@ -140,7 +146,7 @@ class Room extends Component {
 
         this.state.socket.on('updateHighest', (result) => {
             const calledBy = result.slice(0, 20)
-            const newHighest = result.slice(21,)
+            const newHighest = result.slice(21)
 
             this.setState({
                 calledBy: calledBy,
@@ -152,11 +158,11 @@ class Room extends Component {
         this.state.socket.on('startCallFail', () => {
             Swal.fire({
                 title: 'Cannot start calling, not enough people',
-                timer: 2000
+                timer: 2000,
             })
         })
 
-        this.state.socket.on('selectPartner', lastuser => {
+        this.state.socket.on('selectPartner', (lastuser) => {
             this.selectPartner(lastuser)
         })
 
@@ -166,50 +172,63 @@ class Room extends Component {
                 this.updateNeedToWin(newNTW)
                 this.setState({
                     partner: sentBy,
-                    partnerCarder: true
+                    partnerCarder: true,
                 })
-                this.state.socket.emit('partnerPresent', ({
+                this.state.socket.emit('partnerPresent', {
                     partner: this.state.partner,
                     user: this.state.socket.id,
-                    rmid: this.state.roomId
-                }))
+                    rmid: this.state.roomId,
+                })
             } else {
                 if (this.state.socket.id !== sentBy) {
-                    this.state.socket.emit('otherTwo', ({
+                    this.state.socket.emit('otherTwo', {
                         user: this.state.socket.id,
-                        rmid: this.state.roomId
-                    }))
+                        rmid: this.state.roomId,
+                    })
                 }
             }
         })
 
-        this.state.socket.on('fakeWinTesting', user => {
+        this.state.socket.on('fakeWinTesting', (user) => {
             this.whoTheWinner(user)
         })
 
-        this.state.socket.on('otherTwoPartner', otherUser => {
-            if (otherUser !== this.state.socket.id && !this.state.partnerCarder && this.state.partner === '' && !this.state.callWinner) {
+        this.state.socket.on('otherTwoPartner', (otherUser) => {
+            if (
+                otherUser !== this.state.socket.id &&
+                !this.state.partnerCarder &&
+                this.state.partner === '' &&
+                !this.state.callWinner
+            ) {
                 this.setState({
                     partner: otherUser,
-                    needToWin: 14 - (parseInt(this.state.needToWin, 10) + parseInt(Math.floor(this.state.currHighest / 5), 10))
+                    needToWin:
+                        14 -
+                        (parseInt(this.state.needToWin, 10) +
+                            parseInt(
+                                Math.floor(this.state.currHighest / 5),
+                                10
+                            )),
                 })
             }
         })
 
         this.state.socket.on('backwardsRecd', ({ partner, user }) => {
-            if (partner === this.state.socket.id && this.state.partner === '' && !this.state.partnerCarder) {
+            if (
+                partner === this.state.socket.id &&
+                this.state.partner === '' &&
+                !this.state.partnerCarder
+            ) {
                 this.setState({
-                    partner: user
+                    partner: user,
                 })
             }
         })
-
     }
 
     //end componentdidmount===============================================================================================
 
     clearBoard = () => {
-
         let newCollected = this.state.collected
         //add all cards in selected to collected
         for (let card of this.state.selected.values()) {
@@ -219,12 +238,13 @@ class Room extends Component {
             collected: newCollected,
             selected: new Set(),
         })
-
     }
 
     whoTheWinner = (guy) => {
         if (this.state.socket.id === guy) {
-            Swal.fire(`Congrats!\nYou beat your friends and they're bad at this game`)
+            Swal.fire(
+                `Congrats!\nYou beat your friends and they're bad at this game`
+            )
         } else if (this.state.partner === guy) {
             Swal.fire(`Congrats!\nYou got carried you boosted animal`)
         } else {
@@ -237,10 +257,15 @@ class Room extends Component {
         console.log(cardString)
         const faes = cardString.slice(9, 10)
         const soot = cardString.slice(20, 21)
-        this.state.socket.emit('clickedCard', (this.state.roomId + this.state.socket.id + faes + soot))
+        this.state.socket.emit(
+            'clickedCard',
+            this.state.roomId + this.state.socket.id + faes + soot
+        )
 
         //removes the clicked card from hand upon clicking
-        const selectedRemoved = this.state.hand.filter(thing => thing !== (faes + soot))
+        const selectedRemoved = this.state.hand.filter(
+            (thing) => thing !== faes + soot
+        )
         this.setState({
             hand: selectedRemoved,
         })
@@ -264,7 +289,7 @@ class Room extends Component {
 
     updateNeedToWin = (newNTW) => {
         this.setState({
-            needToWin: newNTW
+            needToWin: newNTW,
         })
     }
 
@@ -273,7 +298,9 @@ class Room extends Component {
             //this.updateCallingAdd()
             //console.log('callingadd: ' + this.state.callingAddition)
             this.setState({
-                needToWin: parseFloat(this.state.needToWin, 10) + parseFloat(Math.floor(this.state.currHighest / 5) / 4, 10)
+                needToWin:
+                    parseFloat(this.state.needToWin, 10) +
+                    parseFloat(Math.floor(this.state.currHighest / 5) / 4, 10),
             })
             Swal.fire({
                 title: 'Select your partner, enter value in [face][suit]',
@@ -297,19 +324,18 @@ class Room extends Component {
                 } else {
                     console.log('other partner selected')
                     this.setState({ callWinner: true })
-                    this.state.socket.emit(
-                        'partnerQuery',
-                        {
-                            rmid: this.state.roomId,
-                            FS: result.value,
-                            newNTW: this.state.needToWin,
-                            sentBy: this.state.socket.id
-                        }
-                    )
+                    this.state.socket.emit('partnerQuery', {
+                        rmid: this.state.roomId,
+                        FS: result.value,
+                        newNTW: this.state.needToWin,
+                        sentBy: this.state.socket.id,
+                    })
                 }
             })
         } else {
-            Swal.fire(`${lastuser} won the bet, wait for the partner picking thing`)
+            Swal.fire(
+                `${lastuser} won the bet, wait for the partner picking thing`
+            )
         }
     }
 
@@ -353,19 +379,19 @@ class Room extends Component {
             }).then((result) => {
                 console.log(
                     'result ' +
-                    JSON.stringify(result) +
-                    ' currHighest: ' +
-                    this.state.currHighest
+                        JSON.stringify(result) +
+                        ' currHighest: ' +
+                        this.state.currHighest
                 )
                 if (result.isConfirmed) {
                     if (parseInt(result.value, 10) === 0) {
                         this.state.socket.emit(
                             'readyToStart',
                             this.state.socket.id +
-                            ' ' +
-                            this.state.roomId +
-                            ' ' +
-                            this.state.isReady.size
+                                ' ' +
+                                this.state.roomId +
+                                ' ' +
+                                this.state.isReady.size
                         )
                     } else {
                         if (
@@ -380,10 +406,10 @@ class Room extends Component {
                             this.state.socket.emit(
                                 'callResult',
                                 this.state.socket.id +
-                                ' ' +
-                                this.state.roomId +
-                                ' ' +
-                                result.value.valueOf()
+                                    ' ' +
+                                    this.state.roomId +
+                                    ' ' +
+                                    result.value.valueOf()
                             )
                         }
                     }
@@ -392,8 +418,6 @@ class Room extends Component {
                 }
             })
         })
-
-
     }
 
     //=======================================================================================
@@ -410,7 +434,7 @@ class Room extends Component {
             isReady,
             needToWin,
             wonSets,
-            partner
+            partner,
         } = this.state
 
         //socket listeners======================================================================================
@@ -443,8 +467,6 @@ class Room extends Component {
             cursor: 'pointer',
         }
 
-
-
         return (
             <div>
                 <div>
@@ -459,10 +481,13 @@ class Room extends Component {
                     {/* needToWin {needToWin} */}
                 </div>
 
-                <div style={{
-                    fontSize: 24
-                }}>
-                    Welcome, player {this.state.socket.id} to room {this.state.roomId}
+                <div
+                    style={{
+                        fontSize: 24,
+                    }}
+                >
+                    Welcome, player {this.state.socket.id} to room{' '}
+                    {this.state.roomId}
                 </div>
 
                 <button
@@ -577,7 +602,7 @@ class Room extends Component {
                         Start
                     </button> */}
                 </React.Fragment>
-            </div >
+            </div>
         )
     }
 }
@@ -625,13 +650,13 @@ const Board = (props) => {
             <PepeHands />
             <div style={{ fontSize: 20 }}>
                 {/*should probably pick a better font for this*/}
-                {callingDisplay(props.partner)} is: {resultInWords(props.currHighest)}, called
-                by {props.calledBy}
+                {callingDisplay(props.partner)} is:{' '}
+                {resultInWords(props.currHighest)}, called by {props.calledBy}
                 <br />
                 {isReadyEmpty(props.isReady)} is/are ready to start
                 <br />
                 You have won {props.wonSets} hand(s) so far
-                </div>
+            </div>
         </div>
     )
 }
@@ -644,10 +669,7 @@ const RoundBoard = (props) => {
     function showSelected(selected, result) {
         for (let userFS of selected.keys()) {
             result.add(
-                <Card
-                    face={userFS.slice(20, 21)}
-                    suit={userFS.slice(21,)}
-                />
+                <Card face={userFS.slice(20, 21)} suit={userFS.slice(21)} />
             )
         }
     }
