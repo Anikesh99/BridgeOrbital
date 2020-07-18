@@ -64,6 +64,8 @@ class Room extends Component {
             wonSets: '0',
             partnerCarder: false,
             callWinner: false,
+            name: '',
+            nameList: new Map(),
         }
     }
 
@@ -87,7 +89,7 @@ class Room extends Component {
             )
         })
 
-        //previously in dealHand
+
         this.state.socket.on('cardSelected', (userFS) => {
             console.log(userFS)
             //setState for the selected cards
@@ -224,9 +226,53 @@ class Room extends Component {
                 })
             }
         })
+
+        this.state.socket.on('nameListUpdate', ({ name, id }) => {
+            this.setState({
+                nameList: this.state.nameList.set(id, name)
+            })
+            this.state.socket.emit('previouslyAdded', ({
+                rmid: this.state.roomId,
+                name: this.state.name,
+                id: this.state.socket.id
+            }))
+        })
+
+        this.state.socket.on('NLbackUpdate', ({ name, id }) => {
+            this.setState({
+                nameList: this.state.nameList.set(id, name)
+            })
+        })
     }
 
     //end componentdidmount===============================================================================================
+    changeName = () => {
+        Swal.fire({
+            title: "Enter new name",
+            input: "text",
+            confirmButtonText: "Set name",
+        }).then((result) => {
+
+            if (result.isDismissed || result.value === '') {
+                this.setState({
+                    name: this.state.socket.id,
+                })
+            } else {
+                this.setState({
+                    name: result.value,
+                })
+            }
+
+            if (this.state.roomId !== '' && (this.state.name !== '')) {
+                this.state.socket.emit('setName', {
+                    name: this.state.name,
+                    id: this.state.socket.id,
+                    rmid: this.state.roomId,
+                })
+            }
+
+        })
+    }
 
     clearBoard = () => {
         let newCollected = this.state.collected
@@ -324,6 +370,7 @@ class Room extends Component {
                 } else {
                     console.log('other partner selected')
                     this.setState({ callWinner: true })
+
                     this.state.socket.emit('partnerQuery', {
                         rmid: this.state.roomId,
                         FS: result.value,
@@ -379,19 +426,19 @@ class Room extends Component {
             }).then((result) => {
                 console.log(
                     'result ' +
-                        JSON.stringify(result) +
-                        ' currHighest: ' +
-                        this.state.currHighest
+                    JSON.stringify(result) +
+                    ' currHighest: ' +
+                    this.state.currHighest
                 )
                 if (result.isConfirmed) {
                     if (parseInt(result.value, 10) === 0) {
                         this.state.socket.emit(
                             'readyToStart',
                             this.state.socket.id +
-                                ' ' +
-                                this.state.roomId +
-                                ' ' +
-                                this.state.isReady.size
+                            ' ' +
+                            this.state.roomId +
+                            ' ' +
+                            this.state.isReady.size
                         )
                     } else {
                         if (
@@ -406,10 +453,10 @@ class Room extends Component {
                             this.state.socket.emit(
                                 'callResult',
                                 this.state.socket.id +
-                                    ' ' +
-                                    this.state.roomId +
-                                    ' ' +
-                                    result.value.valueOf()
+                                ' ' +
+                                this.state.roomId +
+                                ' ' +
+                                result.value.valueOf()
                             )
                         }
                     }
@@ -418,6 +465,14 @@ class Room extends Component {
                 }
             })
         })
+    }
+
+    nameFromId = (id) => {
+        if (!this.state.nameList.has(id)) {
+            return (this.state.nameList.get(id))
+        } else {
+            return id
+        }
     }
 
     //=======================================================================================
@@ -435,11 +490,10 @@ class Room extends Component {
             needToWin,
             wonSets,
             partner,
+            name,
+            nameList
         } = this.state
 
-        //socket listeners======================================================================================
-
-        //======================================================================================================
         const buttonStyle = {
             width: '350px',
             justifyContent: 'center',
@@ -486,8 +540,10 @@ class Room extends Component {
                         fontSize: 24,
                     }}
                 >
-                    Welcome, player {this.state.socket.id} to room{' '}
-                    {this.state.roomId}
+                    {this.state.nameList}
+                    Welcome, {this.state.name}
+                    {' '}({this.state.socket.id})
+                    to room {this.state.roomId}
                 </div>
 
                 <button
@@ -502,6 +558,7 @@ class Room extends Component {
                                 roomId: this.state.socket.id,
                             })
                             this.state.socket.emit('new_room')
+                            this.changeName()
                         })
                     }}
                 >
@@ -523,6 +580,7 @@ class Room extends Component {
                                 this.setState({
                                     roomId: result.value,
                                 })
+
                                 //checkNumber checks if there are 4 people in the room
                                 this.state.socket.emit(
                                     'checkNumber',
@@ -536,7 +594,7 @@ class Room extends Component {
                                     cancelButton: true,
                                 }).then((window.location = './room'))
                             })
-                        })
+                        }).then(() => { this.changeName() })
                     }}
                 >
                     Join Room
@@ -560,6 +618,7 @@ class Room extends Component {
                             isReady={isReady}
                             wonSets={wonSets}
                             partner={partner}
+                            nameList={nameList}
                         />
                     </div>
                     {/* <button style={buttonStyle} onClick={this.dealQuery}>
@@ -602,7 +661,7 @@ class Room extends Component {
                         Start
                     </button> */}
                 </React.Fragment>
-            </div>
+            </div >
         )
     }
 }
@@ -640,7 +699,10 @@ const Board = (props) => {
         if (set.size === 0) {
             return 'Nobody'
         } else {
-            return new Array(...set).join(', ')
+            let ids = new Array(...set)
+            let ret = new Set()
+            ids.forEach(id => ret.add(props.nameList.get(id)))
+            return new Array(...ret).join(', ')
         }
     }
 
@@ -651,7 +713,7 @@ const Board = (props) => {
             <div style={{ fontSize: 20 }}>
                 {/*should probably pick a better font for this*/}
                 {callingDisplay(props.partner)} is:{' '}
-                {resultInWords(props.currHighest)}, called by {props.calledBy}
+                {resultInWords(props.currHighest)}, called by {props.nameList.get(props.calledBy)}
                 <br />
                 {isReadyEmpty(props.isReady)} is/are ready to start
                 <br />
