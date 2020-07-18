@@ -4,7 +4,7 @@ import Swal from 'sweetalert2'
 import { Card, HandStyles, CardStyles, Hand } from 'react-casino'
 import socket from 'socket.io-client/lib/socket'
 
-const ENDPOINT = 'http://127.0.0.1:5000'
+const ENDPOINT = ''
 
 function resultInWords(x) {
     let num
