@@ -43,7 +43,6 @@ const socket = require('socket.io')
 // Starting a socket on the specified server
 let io = socket(server)
 
-io.on('connection', (socket) => { })
 //For the rooms
 const { cardsInitialState, startNewGame } = require('./client/src/util')
 const { default: Swal } = require('sweetalert2')
@@ -479,7 +478,6 @@ io.on('connection', (socket) => {
         io.in(rmid).emit('otherTwoPartner', user)
     })
 
-
     socket.on('partnerPresent', ({ partner, user, rmid }) => {
         io.in(rmid).emit('backwardsRecd', {
             partner: partner,
@@ -488,21 +486,19 @@ io.on('connection', (socket) => {
     })
 
     socket.on('setName', ({ name, id, rmid }) => {
-        io.in(rmid).emit('nameListUpdate', ({
+        io.in(rmid).emit('nameListUpdate', {
             name: name,
-            id: id
-        }))
+            id: id,
+        })
         //console.log(`setname recd, ${name}, ${id}`)
     })
 
     socket.on('previouslyAdded', ({ rmid, name, id }) => {
-        socket.in(rmid).emit('NLbackUpdate', ({
+        socket.in(rmid).emit('NLbackUpdate', {
             name: name,
-            id: id
-        }))
+            id: id,
+        })
     })
-
-
 })
 //end socket listener dump
 
