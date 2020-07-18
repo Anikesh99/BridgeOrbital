@@ -476,7 +476,7 @@ function dealHand(rmid) {
     })
 }
 
-// http.listen(process.env.PORT || 4000, () => console.log(`I am connected yayy`))
+http.listen(process.env.PORT || 4000, () => console.log(`I am connected yayy`))
 
 app.use(
     bodyParser.urlencoded({
