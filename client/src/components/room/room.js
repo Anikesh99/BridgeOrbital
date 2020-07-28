@@ -546,9 +546,9 @@ class Room extends Component {
                     />
                     <br />
                     {/*the statement at the bottom is for debugging */}
-                    Your partner is {this.state.partner}
+                    {/* Your partner is {this.state.partner}
                     <br />
-                    needToWin {needToWin}
+                    needToWin {needToWin} */}
                 </div>
 
                 <div
@@ -644,7 +644,7 @@ class Room extends Component {
                     </button>
 
                     {/*to test the win triggers*/}
-                    <button
+                    {/* <button
                         style={longButton}
                         onClick={() => this.state.socket.emit('testWinner', {
                             user: this.state.socket.id,
@@ -652,7 +652,7 @@ class Room extends Component {
                         })
                         }>
                         Fake win trigger, testing
-                    </button>
+                    </button> */}
 
                     {/* <button
                         style={longButton}
