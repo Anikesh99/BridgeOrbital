@@ -385,7 +385,7 @@ io.on('connection', (socket) => {
         const selectedSet = selected
         const winningSuit = currHighest % 5
         let isHighSuit
-        let winner
+        let winner = ''
 
         let highestInSet = 0
 
@@ -464,6 +464,7 @@ io.on('connection', (socket) => {
                 }
             }
         }
+        console.log(winner)
         io.in(rmid).emit('foundSetWinner', winner)
     })
 
@@ -494,10 +495,14 @@ io.on('connection', (socket) => {
     })
 
     socket.on('previouslyAdded', ({ rmid, name, id }) => {
-        socket.in(rmid).emit('NLbackUpdate', {
+        io.in(rmid).emit('NLbackUpdate', {
             name: name,
             id: id,
         })
+    })
+
+    socket.on('partnercardis', ({ card, rmid }) => {
+        io.in(rmid).emit('showchosencard', card)
     })
 })
 //end socket listener dump

@@ -114,19 +114,19 @@ class Room extends Component {
             }
         })
 
-        this.state.socket.on('foundSetWinner', (winner) => {
+        this.state.socket.on('foundSetWinner', (user) => {
             if (this.state.needToWin === 1) {
-                this.whoTheWinner(winner)
+                this.setWinner(user, false)
             } else {
-                if (this.state.socket.id === winner) {
+                if (this.state.socket.id === user) {
                     this.setState({
                         wonSets: parseInt(this.state.wonSets, 10) + 1,
                     })
                 }
 
                 if (
-                    this.state.socket.id === winner ||
-                    this.state.partner === winner
+                    this.state.socket.id === user ||
+                    this.state.partner === user
                 ) {
                     this.setState({
                         needToWin: this.state.needToWin - 1,
@@ -137,6 +137,7 @@ class Room extends Component {
                 this.clearBoard()
             }
         })
+
 
         this.state.socket.on('isReady', (user) => {
             const newReady = this.state.isReady.add(user)
@@ -165,7 +166,7 @@ class Room extends Component {
         })
 
         this.state.socket.on('selectPartner', (lastuser) => {
-            this.selectPartner(lastuser)
+            this.selectPartner(lastuser, true)
         })
 
         this.state.socket.on('assignPartner', ({ FS, newNTW, sentBy }) => {
@@ -192,7 +193,7 @@ class Room extends Component {
         })
 
         this.state.socket.on('fakeWinTesting', (user) => {
-            this.whoTheWinner(user)
+            this.setWinner(user, true)
         })
 
         this.state.socket.on('otherTwoPartner', (otherUser) => {
@@ -243,9 +244,33 @@ class Room extends Component {
                 nameList: this.state.nameList.set(id, name)
             })
         })
+
+        this.state.socket.on('showchosencard', (card) => {
+            Swal.fire({
+                title: `The partner card chosen was ${card}`,
+                timer: 2000
+            })
+        })
     }
 
     //end componentdidmount===============================================================================================
+    setWinner = (user, bool) => {
+        if (this.state.socket.id === user) {
+            Swal.fire(`Congrats!\nYou beat your friends and they're bad at this game`)
+            if (!bool) {
+                this.state.socket.emit('testWinner', ({
+                    user: this.state.socket.id,
+                    rmid: this.state.roomId
+                }))
+            }
+        } else if (this.state.partner === user) {
+            Swal.fire(`Congrats!\nYou got carried :)`)
+        } else {
+            Swal.fire(`Whoops!\nBetter luck next time!`)
+        }
+    }
+
+
     changeName = () => {
         Swal.fire({
             title: "Enter new name",
@@ -284,18 +309,6 @@ class Room extends Component {
             collected: newCollected,
             selected: new Set(),
         })
-    }
-
-    whoTheWinner = (guy) => {
-        if (this.state.socket.id === guy) {
-            Swal.fire(
-                `Congrats!\nYou beat your friends and they're bad at this game`
-            )
-        } else if (this.state.partner === guy) {
-            Swal.fire(`Congrats!\nYou got carried you boosted animal`)
-        } else {
-            Swal.fire(`Whoops!\n${this.state.nameList.get(guy)}'s team beat your ass teeheexd`)
-        }
     }
 
     clickCard = (e, card) => {
@@ -339,15 +352,17 @@ class Room extends Component {
         })
     }
 
-    selectPartner = (lastuser) => {
+    selectPartner = (lastuser, bool) => {
         if (this.state.socket.id === lastuser) {
             //this.updateCallingAdd()
             //console.log('callingadd: ' + this.state.callingAddition)
-            this.setState({
-                needToWin:
-                    parseFloat(this.state.needToWin, 10) +
-                    parseFloat(Math.floor(this.state.currHighest / 5) / 4, 10),
-            })
+            if (bool) {
+                this.setState({
+                    needToWin:
+                        parseFloat(this.state.needToWin, 10) +
+                        parseFloat(Math.floor(this.state.currHighest / 5) / 4, 10),
+                })
+            }
             Swal.fire({
                 title: 'Select your partner, enter value in [face][suit]',
                 input: 'text',
@@ -359,30 +374,31 @@ class Room extends Component {
                         timer: 2000,
                     })
                     //console.log('cannot select yourself as partner')
-                    this.selectPartner()
+                    this.selectPartner(lastuser, false)
                 } else if (result.value === '') {
                     console.log('no partner selected')
                     Swal.fire({
                         title: 'no partner selected',
                         timer: '2000',
                     })
-                    this.selectPartner()
+                    this.selectPartner(lastuser, false)
                 } else {
-                    console.log('other partner selected')
+                    //console.log('other partner selected')
                     this.setState({ callWinner: true })
-
                     this.state.socket.emit('partnerQuery', {
                         rmid: this.state.roomId,
                         FS: result.value,
                         newNTW: this.state.needToWin,
                         sentBy: this.state.socket.id,
                     })
+                    this.state.socket.emit('partnercardis', ({ card: result.value, rmid: this.state.roomId }))
                 }
             })
         } else {
-            Swal.fire(
-                `${this.state.nameList.get(lastuser)} won the bet, wait for the partner picking thing`
-            )
+            Swal.fire({
+                title: `${this.state.nameList.get(lastuser)} won the bet, partner picking in progress...`,
+                timer: 2000
+            })
         }
     }
 
@@ -530,9 +546,9 @@ class Room extends Component {
                     />
                     <br />
                     {/*the statement at the bottom is for debugging */}
-                    {/* Your partner is {this.state.partner} */}
+                    Your partner is {this.state.partner}
                     <br />
-                    {/* needToWin {needToWin} */}
+                    needToWin {needToWin}
                 </div>
 
                 <div
@@ -628,7 +644,7 @@ class Room extends Component {
                     </button>
 
                     {/*to test the win triggers*/}
-                    {/* <button
+                    <button
                         style={longButton}
                         onClick={() => this.state.socket.emit('testWinner', {
                             user: this.state.socket.id,
@@ -637,7 +653,7 @@ class Room extends Component {
                         }>
                         Fake win trigger, testing
                     </button>
-                     */}
+
                     {/* <button
                         style={longButton}
                         onClick={() => {
